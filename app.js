@@ -4,6 +4,28 @@
   // ── State ──
   let allGames = [];
   let filtered = [];
+  let currentPlatform = "All";
+
+  // Preferred display order for platforms (others appear alphabetically after)
+  const PLATFORM_ORDER = [
+    "All",
+    "PC",
+    "PlayStation 1",
+    "PlayStation 2",
+    "PlayStation 3",
+    "PlayStation 4",
+    "PlayStation 5",
+    "PSP",
+    "PS Vita",
+    "Nintendo Switch",
+    "Nintendo 3DS",
+    "Wii",
+    "Wii U",
+    "Xbox",
+    "Xbox 360",
+    "Xbox One",
+    "Xbox Series X|S"
+  ];
 
   // ── DOM ──
   const $search = document.getElementById("search");
@@ -16,6 +38,7 @@
   const $stats = document.getElementById("stats");
   const $empty = document.getElementById("emptyState");
   const $reset = document.getElementById("resetFilters");
+  const $tabs = document.getElementById("platformTabs");
 
   // ── Helpers ──
   function ratingClass(summary) {
@@ -37,7 +60,44 @@
     return pct && pct > 0 ? pct.toFixed(1) + "%" : "—";
   }
 
-  // ── Render ──
+  function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  // ── Platform tabs ──
+  function buildPlatformTabs() {
+    const platformsInData = [...new Set(allGames.map((g) => g.Platform || "Unknown"))];
+
+    // Sort: use preferred order first, then any extras alphabetically
+    const ordered = PLATFORM_ORDER.filter((p) => p === "All" || platformsInData.includes(p));
+    const extras = platformsInData
+      .filter((p) => !PLATFORM_ORDER.includes(p))
+      .sort((a, b) => a.localeCompare(b));
+
+    const tabs = [...ordered, ...extras];
+
+    $tabs.innerHTML = "";
+    tabs.forEach((platform) => {
+      const btn = document.createElement("button");
+      btn.className = "platform-tab" + (platform === currentPlatform ? " active" : "");
+      btn.textContent = platform;
+      btn.dataset.platform = platform;
+      btn.addEventListener("click", () => {
+        currentPlatform = platform;
+        document.querySelectorAll(".platform-tab").forEach((t) => t.classList.remove("active"));
+        btn.classList.add("active");
+        applyFilters();
+      });
+      $tabs.appendChild(btn);
+    });
+  }
+
+  // ── Render cards ──
   function render() {
     if (filtered.length === 0) {
       $list.innerHTML = "";
@@ -49,17 +109,25 @@
     $empty.hidden = true;
     $count.textContent = `${filtered.length} game${filtered.length !== 1 ? "s" : ""}`;
 
-    // Use DocumentFragment for performance
     const frag = document.createDocumentFragment();
 
     filtered.forEach((g) => {
       const a = document.createElement("a");
       a.className = "game-card";
-      a.href = g["Steam Store URL"] || "#";
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
+
+      const url = g["Steam Store URL"];
+      if (url) {
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+      } else {
+        a.href = "#";
+        a.addEventListener("click", (e) => e.preventDefault());
+        a.style.cursor = "default";
+      }
 
       const badgeClass = ratingClass(g["Review Summary"]);
+      const platformLabel = g.Platform && g.Platform !== "PC" ? `<span class="meta-item">${escapeHtml(g.Platform)}</span>` : "";
 
       a.innerHTML = `
         <div class="card-header">
@@ -69,6 +137,7 @@
         <div class="card-meta">
           <span class="meta-item"><strong>${formatYear(g["Release Year"])}</strong></span>
           <span class="meta-item">${formatRating(g["Steam Review %"])} positive</span>
+          ${platformLabel}
         </div>
         <div class="developer">${escapeHtml(g.Developer || "Unknown")}</div>
       `;
@@ -80,15 +149,6 @@
     $list.appendChild(frag);
   }
 
-  function escapeHtml(str) {
-    if (!str) return "";
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
   // ── Filter + Sort ──
   function applyFilters() {
     const q = $search.value.trim().toLowerCase();
@@ -97,6 +157,11 @@
     const sort = $sort.value;
 
     filtered = allGames.filter((g) => {
+      // Platform tab
+      if (currentPlatform !== "All") {
+        if ((g.Platform || "Unknown") !== currentPlatform) return false;
+      }
+
       // Search
       if (q) {
         const name = (g.Name || "").toLowerCase();
@@ -142,6 +207,11 @@
 
   // ── Populate year filter ──
   function populateYears() {
+    // Clear previous options except the first "All Years"
+    while ($year.options.length > 1) {
+      $year.remove(1);
+    }
+
     const years = [...new Set(allGames.map((g) => g["Release Year"]).filter((y) => y > 0))]
       .sort((a, b) => b - a);
 
@@ -178,12 +248,15 @@
     $rating.value = "all";
     $year.value = "all";
     $sort.value = "name";
+    currentPlatform = "All";
+    document.querySelectorAll(".platform-tab").forEach((t) => {
+      t.classList.toggle("active", t.dataset.platform === "All");
+    });
     applyFilters();
   });
 
   // ── Init ──
   async function init() {
-    // Show skeletons
     $list.innerHTML = Array(6).fill('<div class="skeleton"></div>').join("");
 
     try {
@@ -192,6 +265,7 @@
       allGames = await res.json();
 
       $stats.textContent = `${allGames.length} games`;
+      buildPlatformTabs();
       populateYears();
       applyFilters();
     } catch (err) {
