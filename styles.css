@@ -261,6 +261,26 @@ body {
   flex: 1;
 }
 
+.region {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(154, 154, 171, 0.12);
+  padding: 2px 7px;
+  border-radius: 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.region-flag {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
 .rating-badge {
   flex-shrink: 0;
   font-size: 0.72rem;

@@ -2,12 +2,13 @@
 
 A simple mobile-friendly web app for browsing a personal game collection.
 
-It started as a Steam library viewer and later got support for multiple platforms (PC, PlayStation, Switch, PSP, etc.).
+Supports multiple platforms (PC, PlayStation, Switch, PSP, etc.).
 
 ### Features
 - Search by game name or developer
 - Filter by rating and release year
 - Platform tabs
+- Region flags for console games
 - Works great on phones
 
 ### How to use it for your own library
@@ -22,17 +23,23 @@ That's it.
 
 ```json
 {
-  "Name": "Half-Life 2",
-  "Platform": "PC",
-  "Release Year": 2004,
-  "Steam Review %": 97.6,
-  "Review Summary": "Overwhelmingly Positive",
-  "Developer": "Valve",
-  "Steam Store URL": "https://store.steampowered.com/app/220",
-  "App ID": 220
+  "Name": "MotorStorm",
+  "Platform": "PlayStation 3",
+  "Region": "EU",
+  "Release Year": 2007,
+  "Score": 82,
+  "Review Summary": "Very Positive",
+  "Developer": "Evolution Studios",
+  "Link": "https://www.mobygames.com/game/12345",
+  "ProductID": "BCES-00006"
 }
 ```
 
-`Platform` can be anything you want (`PC`, `PlayStation 2`, `Nintendo Switch`, `PSP`...). New platforms automatically appear as tabs.
+**Field notes:**
+- `Score` — Metacritic (or Steam rating for PC games)
+- `Review Summary` — generated from the score
+- `Link` — Steam store page or MobyGames page
+- `ProductID` — Steam AppID or platform serial / TitleID
+- `Region` — `WW`, `US`, `EU`, `JP`, etc. (shows a flag)
 
 Feel free to steal this and make it your own.

@@ -6,7 +6,6 @@
   let filtered = [];
   let currentPlatform = "All";
 
-  // Preferred display order for platforms (others appear alphabetically after)
   const PLATFORM_ORDER = [
     "All",
     "PC",
@@ -26,6 +25,27 @@
     "Xbox One",
     "Xbox Series X|S"
   ];
+
+  // Region → flag emoji
+  const REGION_FLAGS = {
+    WW: "🌍",
+    US: "🇺🇸",
+    EU: "🇪🇺",
+    JP: "🇯🇵",
+    PAL: "🇪🇺",
+    AU: "🇦🇺",
+    UK: "🇬🇧",
+    DE: "🇩🇪",
+    FR: "🇫🇷",
+    ES: "🇪🇸",
+    IT: "🇮🇹",
+    KR: "🇰🇷",
+    CN: "🇨🇳",
+    TW: "🇹🇼",
+    BR: "🇧🇷",
+    RU: "🇷🇺",
+    ASIA: "🌏"
+  };
 
   // ── DOM ──
   const $search = document.getElementById("search");
@@ -56,8 +76,15 @@
     return y && y > 0 ? y : "—";
   }
 
-  function formatRating(pct) {
-    return pct && pct > 0 ? pct.toFixed(1) + "%" : "—";
+  function formatScore(score) {
+    if (!score || score <= 0) return "—";
+    return Number.isInteger(score) ? score : score.toFixed(1);
+  }
+
+  function regionDisplay(region) {
+    if (!region || region === "WW") return "";
+    const flag = REGION_FLAGS[region] || "🏳️";
+    return `<span class="region"><span class="region-flag">${flag}</span> ${region}</span>`;
   }
 
   function escapeHtml(str) {
@@ -73,7 +100,6 @@
   function buildPlatformTabs() {
     const platformsInData = [...new Set(allGames.map((g) => g.Platform || "Unknown"))];
 
-    // Sort: use preferred order first, then any extras alphabetically
     const ordered = PLATFORM_ORDER.filter((p) => p === "All" || platformsInData.includes(p));
     const extras = platformsInData
       .filter((p) => !PLATFORM_ORDER.includes(p))
@@ -115,9 +141,8 @@
       const a = document.createElement("a");
       a.className = "game-card";
 
-      const url = g["Steam Store URL"];
-      if (url) {
-        a.href = url;
+      if (g.Link) {
+        a.href = g.Link;
         a.target = "_blank";
         a.rel = "noopener noreferrer";
       } else {
@@ -127,16 +152,20 @@
       }
 
       const badgeClass = ratingClass(g["Review Summary"]);
-      const platformLabel = g.Platform && g.Platform !== "PC" ? `<span class="meta-item">${escapeHtml(g.Platform)}</span>` : "";
+      const regionHtml = regionDisplay(g.Region);
+      const platformLabel =
+        g.Platform && g.Platform !== "PC"
+          ? `<span class="meta-item">${escapeHtml(g.Platform)}</span>`
+          : "";
 
       a.innerHTML = `
         <div class="card-header">
-          <div class="game-name">${escapeHtml(g.Name)}</div>
+          <div class="game-name">${escapeHtml(g.Name)}${regionHtml}</div>
           <span class="rating-badge ${badgeClass}">${escapeHtml(g["Review Summary"] || "No reviews")}</span>
         </div>
         <div class="card-meta">
           <span class="meta-item"><strong>${formatYear(g["Release Year"])}</strong></span>
-          <span class="meta-item">${formatRating(g["Steam Review %"])} positive</span>
+          <span class="meta-item">${formatScore(g.Score)}</span>
           ${platformLabel}
         </div>
         <div class="developer">${escapeHtml(g.Developer || "Unknown")}</div>
@@ -157,24 +186,20 @@
     const sort = $sort.value;
 
     filtered = allGames.filter((g) => {
-      // Platform tab
       if (currentPlatform !== "All") {
         if ((g.Platform || "Unknown") !== currentPlatform) return false;
       }
 
-      // Search
       if (q) {
         const name = (g.Name || "").toLowerCase();
         const dev = (g.Developer || "").toLowerCase();
         if (!name.includes(q) && !dev.includes(q)) return false;
       }
 
-      // Rating
       if (rating !== "all") {
         if ((g["Review Summary"] || "No user reviews") !== rating) return false;
       }
 
-      // Year
       if (year !== "all") {
         if (String(g["Release Year"]) !== year) return false;
       }
@@ -182,7 +207,6 @@
       return true;
     });
 
-    // Sort
     filtered.sort((a, b) => {
       switch (sort) {
         case "name":
@@ -193,10 +217,10 @@
           return (b["Release Year"] || 0) - (a["Release Year"] || 0);
         case "year":
           return (a["Release Year"] || 0) - (b["Release Year"] || 0);
-        case "rating-desc":
-          return (b["Steam Review %"] || 0) - (a["Steam Review %"] || 0);
-        case "rating":
-          return (a["Steam Review %"] || 0) - (b["Steam Review %"] || 0);
+        case "score-desc":
+          return (b.Score || 0) - (a.Score || 0);
+        case "score":
+          return (a.Score || 0) - (b.Score || 0);
         default:
           return 0;
       }
@@ -207,10 +231,7 @@
 
   // ── Populate year filter ──
   function populateYears() {
-    // Clear previous options except the first "All Years"
-    while ($year.options.length > 1) {
-      $year.remove(1);
-    }
+    while ($year.options.length > 1) $year.remove(1);
 
     const years = [...new Set(allGames.map((g) => g["Release Year"]).filter((y) => y > 0))]
       .sort((a, b) => b - a);

@@ -14,19 +14,14 @@
 </head>
 <body>
   <div class="app">
-    <!-- Header -->
     <header class="header">
       <div class="header-top">
         <h1 class="logo">wierucha's Games Library</h1>
         <div class="stats" id="stats">—</div>
       </div>
 
-      <!-- Platform tabs -->
-      <div class="platform-tabs" id="platformTabs">
-        <!-- Injected by JS -->
-      </div>
+      <div class="platform-tabs" id="platformTabs"></div>
 
-      <!-- Search -->
       <div class="search-box">
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
@@ -35,7 +30,6 @@
         <button class="clear-btn" id="clearSearch" aria-label="Clear search">×</button>
       </div>
 
-      <!-- Filters row -->
       <div class="filters">
         <select id="ratingFilter" class="filter-select">
           <option value="all">All Ratings</option>
@@ -56,23 +50,18 @@
           <option value="name-desc">Name Z→A</option>
           <option value="year-desc">Newest First</option>
           <option value="year">Oldest First</option>
-          <option value="rating-desc">Highest Rated</option>
-          <option value="rating">Lowest Rated</option>
+          <option value="score-desc">Highest Score</option>
+          <option value="score">Lowest Score</option>
         </select>
       </div>
     </header>
 
-    <!-- Results count -->
     <div class="results-bar">
       <span id="resultsCount">Loading…</span>
     </div>
 
-    <!-- Game list -->
-    <main class="game-list" id="gameList">
-      <!-- Cards injected here -->
-    </main>
+    <main class="game-list" id="gameList"></main>
 
-    <!-- Empty state -->
     <div class="empty-state" id="emptyState" hidden>
       <div class="empty-icon">🔍</div>
       <p>No games match your filters</p>
