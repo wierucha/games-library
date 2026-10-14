@@ -1,0 +1,318 @@
+:root {
+  --bg: #0f0f13;
+  --surface: #1a1a22;
+  --surface-hover: #24242e;
+  --border: #2a2a36;
+  --text: #f0f0f5;
+  --text-muted: #9a9aab;
+  --accent: #66c0f4;
+  --accent-dim: #3d8bb8;
+  --positive: #66c0f4;
+  --very-positive: #4caf50;
+  --overwhelming: #a4d007;
+  --mixed: #ffc107;
+  --negative: #e74c3c;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 20px rgba(0,0,0,0.35);
+  --header-h: auto;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.45;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+.app {
+  max-width: 680px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+}
+
+/* ── Header ── */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(15, 15, 19, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.stats {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: var(--surface);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+/* Search */
+.search-box {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+#search {
+  width: 100%;
+  padding: 12px 40px 12px 44px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+#search:focus {
+  border-color: var(--accent);
+}
+
+#search::placeholder {
+  color: var(--text-muted);
+}
+
+.clear-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  display: none;
+}
+
+.clear-btn.visible {
+  display: block;
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.filters::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-select {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 500;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a9aab' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  border-color: var(--accent);
+}
+
+/* Results bar */
+.results-bar {
+  padding: 10px 16px 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ── Game cards ── */
+.game-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px;
+}
+
+.game-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  transition: background 0.15s, transform 0.15s;
+  text-decoration: none;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-card:active {
+  background: var(--surface-hover);
+  transform: scale(0.985);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.game-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.3;
+  flex: 1;
+}
+
+.rating-badge {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.rating-badge.overwhelming { background: rgba(164, 208, 7, 0.18); color: var(--overwhelming); }
+.rating-badge.very-positive { background: rgba(76, 175, 80, 0.18); color: var(--very-positive); }
+.rating-badge.mostly-positive { background: rgba(102, 192, 244, 0.18); color: var(--positive); }
+.rating-badge.mixed { background: rgba(255, 193, 7, 0.15); color: var(--mixed); }
+.rating-badge.mostly-negative { background: rgba(231, 76, 60, 0.18); color: var(--negative); }
+.rating-badge.no-reviews { background: rgba(154, 154, 171, 0.15); color: var(--text-muted); }
+
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.meta-item strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.developer {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+
+.btn {
+  margin-top: 16px;
+  padding: 10px 20px;
+  background: var(--accent);
+  color: #0f0f13;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn:active {
+  opacity: 0.85;
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--radius);
+  height: 90px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Desktop tweaks */
+@media (min-width: 600px) {
+  .app {
+    padding-top: 8px;
+  }
+  .header {
+    border-radius: 0 0 16px 16px;
+  }
+  .game-card:hover {
+    background: var(--surface-hover);
+  }
+}

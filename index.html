@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f0f13" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>My Steam Library</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-top">
+        <h1 class="logo">🎮 Steam Library</h1>
+        <div class="stats" id="stats">—</div>
+      </div>
+
+      <!-- Search -->
+      <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+        </svg>
+        <input type="search" id="search" placeholder="Search games or developers..." autocomplete="off" />
+        <button class="clear-btn" id="clearSearch" aria-label="Clear search">×</button>
+      </div>
+
+      <!-- Filters row -->
+      <div class="filters">
+        <select id="ratingFilter" class="filter-select">
+          <option value="all">All Ratings</option>
+          <option value="Overwhelmingly Positive">Overwhelmingly Positive</option>
+          <option value="Very Positive">Very Positive</option>
+          <option value="Mostly Positive">Mostly Positive</option>
+          <option value="Mixed">Mixed</option>
+          <option value="Mostly Negative">Mostly Negative</option>
+          <option value="No user reviews">No Reviews</option>
+        </select>
+
+        <select id="yearFilter" class="filter-select">
+          <option value="all">All Years</option>
+        </select>
+
+        <select id="sortBy" class="filter-select">
+          <option value="name">Name A→Z</option>
+          <option value="name-desc">Name Z→A</option>
+          <option value="year-desc">Newest First</option>
+          <option value="year">Oldest First</option>
+          <option value="rating-desc">Highest Rated</option>
+          <option value="rating">Lowest Rated</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- Results count -->
+    <div class="results-bar">
+      <span id="resultsCount">Loading…</span>
+    </div>
+
+    <!-- Game list -->
+    <main class="game-list" id="gameList">
+      <!-- Cards injected here -->
+    </main>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState" hidden>
+      <div class="empty-icon">🔍</div>
+      <p>No games match your filters</p>
+      <button id="resetFilters" class="btn">Reset filters</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
