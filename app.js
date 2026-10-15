@@ -59,6 +59,7 @@
   const $empty = document.getElementById("emptyState");
   const $reset = document.getElementById("resetFilters");
   const $tabs = document.getElementById("platformTabs");
+  const $export = document.getElementById("exportBtn");
 
   // ── Helpers ──
   function ratingClass(summary) {
@@ -244,6 +245,38 @@
     });
   }
 
+  // ── Export current view as CSV ──
+  function exportCSV() {
+    if (!filtered.length) {
+      alert("Nothing to export");
+      return;
+    }
+
+    const headers = ["Name", "Platform", "Region", "Release Year", "Score", "Review Summary", "Developer", "Link", "ProductID"];
+    const rows = filtered.map((g) =>
+      headers.map((h) => {
+        let val = g[h] ?? "";
+        // Escape quotes and wrap if needed
+        val = String(val).replace(/"/g, '""');
+        if (val.includes(",") || val.includes('"') || val.includes("\n")) {
+          val = `"${val}"`;
+        }
+        return val;
+      }).join(",")
+    );
+
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    const platformSlug = currentPlatform === "All" ? "all" : currentPlatform.toLowerCase().replace(/\s+/g, "-");
+    a.href = url;
+    a.download = `games-library-${platformSlug}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // ── Events ──
   let debounce;
   $search.addEventListener("input", () => {
@@ -275,6 +308,8 @@
     });
     applyFilters();
   });
+
+  $export.addEventListener("click", exportCSV);
 
   // ── Init ──
   async function init() {
