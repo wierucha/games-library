@@ -1,8 +1,8 @@
 # wierucha's Games Library
 
-Personal game collection browser. Built as a static site so it runs anywhere (GitHub Pages, any web host, or even offline).
+Personal game collection browser. Static site — no backend, no build step. Runs on GitHub Pages, any static host, or offline.
 
-Made primarily for phone use, but works fine on desktop too.
+Built mainly for phone use.
 
 ## Features
 
@@ -13,15 +13,30 @@ Made primarily for phone use, but works fine on desktop too.
 - Light / dark theme (remembers your choice)
 - Export the current filtered list as CSV
 - Region flags on console games
-- Sticky header so search and filters stay reachable while scrolling
+- Sticky header so search and filters stay visible while scrolling
+
+## Adding games
+
+Use **`add-game.html`** instead of editing JSON by hand.
+
+1. Open `add-game.html` (locally or on the site)
+2. Load your current `games.json` (it tries automatically)
+3. Fill in the form
+   - **Search MobyGames** / **Search Metacritic** open the right pages so you can copy score, year, developer, link
+   - Platform names are normalized on submit (e.g. `PS3` → `PlayStation 3`) so you don't create duplicate tabs
+4. Queue as many games as you want
+5. Hit **Download updated JSON**
+   - Saves a timestamped backup of the previous file first
+   - Then downloads the new `games.json`
+6. Replace the old file and commit/upload
 
 ## How to use it for your own library
 
-1. Fork the repo (or just copy the files)
-2. Replace `games.json` with your own data
-3. Turn on GitHub Pages (or drop the files on any static host)
+1. Fork the repo (or copy the files)
+2. Replace `games.json` with your collection
+3. Enable GitHub Pages (or drop the files on any static host)
 
-That's it. No build step, no backend.
+That's it.
 
 ## games.json format
 
@@ -41,11 +56,22 @@ That's it. No build step, no backend.
 
 **Field notes**
 
-- `Score` — Metacritic score, or Steam rating percentage for digital PC games
+- `Score` — Metacritic score, or Steam rating for digital PC games
 - `Review Summary` — derived from the score (Overwhelmingly Positive / Very Positive / Mostly Positive / Mixed / Mostly Negative)
-- `Link` — MobyGames, Steam page, or whatever you prefer
+- `Link` — MobyGames, Steam, or whatever you prefer
 - `ProductID` — platform serial, TitleID, or Steam AppID
-- `Region` — `WW`, `US`, `EU`, `JP`, `ASIA`, etc. (a flag is shown when available)
-- `Platform` — free text; tabs are generated automatically from whatever platforms exist in the file
+- `Region` — `WW`, `US`, `EU`, `JP`, `ASIA`, `NA`, or a custom code (e.g. `DE`)
+- `Platform` — free text; tabs are generated from whatever platforms exist in the file
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `index.html` | Main app |
+| `app.js` | Logic |
+| `styles.css` | Styles |
+| `games.json` | Your library data |
+| `add-game.html` | Tool to add games without hand-editing JSON |
+| `favicon.svg` | Tab icon |
 
 Feel free to take it and adapt it.
