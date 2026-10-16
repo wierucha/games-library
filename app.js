@@ -68,6 +68,7 @@
   const $reset = document.getElementById("resetFilters");
   const $tabs = document.getElementById("platformTabs");
   const $export = document.getElementById("exportBtn");
+  const $theme = document.getElementById("themeToggle");
 
   // ── Helpers ──
   function ratingClass(summary) {
@@ -367,8 +368,30 @@
 
   $export.addEventListener("click", exportCSV);
 
+  // ── Theme ──
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    $theme.textContent = theme === "light" ? "☀" : "☾";
+    // Update browser chrome color
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = theme === "light" ? "#f4f5f7" : "#0f0f13";
+    localStorage.setItem("theme", theme);
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem("theme");
+    const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+    applyTheme(saved || (prefersLight ? "light" : "dark"));
+  }
+
+  $theme.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") || "dark";
+    applyTheme(current === "dark" ? "light" : "dark");
+  });
+
   // ── Init ──
   async function init() {
+    initTheme();
     $list.innerHTML = Array(6).fill('<div class="skeleton"></div>').join("");
 
     try {
