@@ -1,6 +1,6 @@
 # wierucha's Games Library
 
-Personal game collection browser. Static site — no backend, no build step. Runs on GitHub Pages, any static host, or offline.
+Personal game collection browser. Static site, no backend, no build step. Runs on GitHub Pages, any static host, or offline.
 
 Built mainly for phone use.
 
