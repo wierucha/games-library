@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Game – wierucha's Games Library</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a22;
+      --border: #2a2a36;
+      --text: #f0f0f5;
+      --muted: #9a9aab;
+      --accent: #66c0f4;
+      --ok: #4caf50;
+      --err: #e74c3c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      padding: 24px 16px 60px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 1.25rem; margin-bottom: 4px; }
+    .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 24px; }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      margin-top: 14px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .row { display: flex; gap: 12px; }
+    .row > * { flex: 1; }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .search-btns {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .search-btns button {
+      flex: 1;
+      padding: 9px 12px;
+      font-size: 0.82rem;
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .search-btns button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      color: var(--muted);
+      border-color: var(--border);
+    }
+    button {
+      padding: 11px 18px;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0f0f13;
+    }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-primary:disabled, .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 16px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      display: none;
+    }
+    .status.ok { display: block; background: rgba(76,175,80,0.15); color: var(--ok); }
+    .status.err { display: block; background: rgba(231,76,60,0.15); color: var(--err); }
+    .status.info { display: block; background: rgba(102,192,244,0.12); color: var(--accent); }
+    .queue {
+      margin-top: 28px;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+    }
+    .queue h2 { font-size: 0.95rem; margin-bottom: 10px; }
+    .queue-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .queue-item button {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      background: transparent;
+      color: var(--err);
+      border: 1px solid var(--err);
+    }
+    .hint { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
+    #regionCustom { display: none; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Add Game</h1>
+  <p class="sub">Fill the form, search MobyGames / Metacritic for data, queue games, download updated JSON</p>
+
+  <form id="form">
+    <label for="name">Name *</label>
+    <input id="name" required placeholder="e.g. The Last of Us" />
+
+    <label for="platform">Platform *</label>
+    <input id="platform" list="platformList" required placeholder="PlayStation 3" />
+    <datalist id="platformList"></datalist>
+    <p class="hint">Will be matched to an existing platform name when possible</p>
+
+    <div class="search-btns">
+      <button type="button" id="mobyBtn" disabled>Search MobyGames</button>
+      <button type="button" id="metaBtn" disabled>Search Metacritic</button>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="regionSelect">Region</label>
+        <select id="regionSelect">
+          <option value="EU">EU</option>
+          <option value="NA">NA</option>
+          <option value="JP">JP</option>
+          <option value="ASIA">ASIA</option>
+          <option value="WW">WW</option>
+          <option value="__custom">Other (write in)…</option>
+        </select>
+        <input id="regionCustom" placeholder="e.g. DE, FR, UK, PAL…" />
+      </div>
+      <div>
+        <label for="year">Release Year</label>
+        <input id="year" type="number" min="1970" max="2030" placeholder="2007" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="score">Score (0–100)</label>
+        <input id="score" type="number" min="0" max="100" step="0.1" placeholder="82" />
+      </div>
+      <div>
+        <label for="developer">Developer</label>
+        <input id="developer" placeholder="Naughty Dog" />
+      </div>
+    </div>
+
+    <label for="link">Link (MobyGames / Steam / etc.)</label>
+    <input id="link" type="url" placeholder="https://www.mobygames.com/game/..." />
+
+    <label for="productId">ProductID / Serial</label>
+    <input id="productId" placeholder="BCES-00006" />
+    <p class="hint">Serial, TitleID, or Steam AppID</p>
+
+    <div class="btn-row">
+      <button type="submit" class="btn-primary">Add to queue</button>
+      <button type="button" id="loadBtn" class="btn-secondary">Load games.json</button>
+      <button type="button" id="downloadBtn" class="btn-primary" disabled>Download updated JSON</button>
+    </div>
+  </form>
+
+  <div id="status" class="status"></div>
+
+  <div class="queue" id="queueSection" hidden>
+    <h2>Queued games (<span id="queueCount">0</span>)</h2>
+    <div id="queueList"></div>
+  </div>
+
+  <script>
+    let baseGames = [];
+    let queue = [];
+    let knownPlatforms = [];
+
+    const $ = (id) => document.getElementById(id);
+    const form = $("form");
+    const status = $("status");
+    const queueSection = $("queueSection");
+    const queueList = $("queueList");
+    const queueCount = $("queueCount");
+    const downloadBtn = $("downloadBtn");
+    const platformList = $("platformList");
+    const mobyBtn = $("mobyBtn");
+    const metaBtn = $("metaBtn");
+    const regionSelect = $("regionSelect");
+    const regionCustom = $("regionCustom");
+
+    // Canonical platform names used in the library
+    const CANONICAL_PLATFORMS = [
+      "PlayStation 1", "PlayStation 2", "PlayStation 3", "PlayStation 4", "PlayStation 5",
+      "PSP", "PS Vita",
+      "Nintendo DS", "Nintendo 3DS", "Nintendo Switch",
+      "NES", "Famiclone", "Sega Master System", "Commodore 64",
+      "Wii", "Wii U",
+      "Xbox", "Xbox 360", "Xbox One", "Xbox Series X|S",
+      "PC (Physical)", "PC (Steam)"
+    ];
+
+    // Aliases → canonical name (lowercase keys)
+    const PLATFORM_ALIASES = {
+      "ps1": "PlayStation 1", "psx": "PlayStation 1", "playstation": "PlayStation 1",
+      "playstation 1": "PlayStation 1", "playstation1": "PlayStation 1",
+      "ps2": "PlayStation 2", "playstation 2": "PlayStation 2", "playstation2": "PlayStation 2",
+      "ps3": "PlayStation 3", "playstation 3": "PlayStation 3", "playstation3": "PlayStation 3",
+      "ps4": "PlayStation 4", "playstation 4": "PlayStation 4", "playstation4": "PlayStation 4",
+      "ps5": "PlayStation 5", "playstation 5": "PlayStation 5", "playstation5": "PlayStation 5",
+      "psp": "PSP",
+      "vita": "PS Vita", "ps vita": "PS Vita", "psvita": "PS Vita",
+      "ds": "Nintendo DS", "nintendo ds": "Nintendo DS",
+      "3ds": "Nintendo 3DS", "nintendo 3ds": "Nintendo 3DS",
+      "switch": "Nintendo Switch", "nintendo switch": "Nintendo Switch",
+      "nes": "NES", "famicom": "NES",
+      "famiclone": "Famiclone",
+      "sms": "Sega Master System", "master system": "Sega Master System", "sega master system": "Sega Master System",
+      "c64": "Commodore 64", "commodore 64": "Commodore 64", "commodore64": "Commodore 64",
+      "wii": "Wii", "wii u": "Wii U", "wiiu": "Wii U",
+      "xbox": "Xbox", "xbox 360": "Xbox 360", "xbox360": "Xbox 360",
+      "xbox one": "Xbox One", "xboxone": "Xbox One",
+      "xbox series": "Xbox Series X|S", "xbox series x": "Xbox Series X|S", "xbox series s": "Xbox Series X|S",
+      "pc": "PC (Physical)", "pc physical": "PC (Physical)", "pc (physical)": "PC (Physical)",
+      "steam": "PC (Steam)", "pc steam": "PC (Steam)", "pc (steam)": "PC (Steam)"
+    };
+
+    // Metacritic platform path segments
+    const METACRITIC_PLATFORM = {
+      "PlayStation 1": "playstation",
+      "PlayStation 2": "playstation-2",
+      "PlayStation 3": "playstation-3",
+      "PlayStation 4": "playstation-4",
+      "PlayStation 5": "playstation-5",
+      "PSP": "psp",
+      "PS Vita": "ps-vita",
+      "Nintendo DS": "ds",
+      "Nintendo 3DS": "3ds",
+      "Nintendo Switch": "switch",
+      "NES": "nes",
+      "Famiclone": "nes",
+      "Sega Master System": "sega-master-system",
+      "Xbox": "xbox",
+      "Xbox 360": "xbox-360",
+      "Xbox One": "xbox-one",
+      "Xbox Series X|S": "xbox-series-x",
+      "PC (Physical)": "pc",
+      "PC (Steam)": "pc",
+      "Wii": "wii",
+      "Wii U": "wii-u"
+    };
+
+    function normalizePlatform(raw) {
+      if (!raw) return raw;
+      const trimmed = raw.trim();
+      const lower = trimmed.toLowerCase();
+
+      // Exact canonical match
+      const exact = CANONICAL_PLATFORMS.find(p => p.toLowerCase() === lower);
+      if (exact) return exact;
+
+      // Alias match
+      if (PLATFORM_ALIASES[lower]) return PLATFORM_ALIASES[lower];
+
+      // Fuzzy: match against known platforms from loaded data
+      const fromData = knownPlatforms.find(p => p.toLowerCase() === lower);
+      if (fromData) return fromData;
+
+      // Partial contains
+      for (const p of CANONICAL_PLATFORMS) {
+        if (p.toLowerCase().includes(lower) || lower.includes(p.toLowerCase())) {
+          return p;
+        }
+      }
+
+      return trimmed; // leave as-is if unknown
+    }
+
+    function summaryFromScore(score) {
+      if (!score || score <= 0) return "No user reviews";
+      if (score >= 90) return "Overwhelmingly Positive";
+      if (score >= 80) return "Very Positive";
+      if (score >= 70) return "Mostly Positive";
+      if (score >= 50) return "Mixed";
+      return "Mostly Negative";
+    }
+
+    function showStatus(msg, type = "ok") {
+      status.textContent = msg;
+      status.className = "status " + type;
+    }
+
+    function getRegion() {
+      if (regionSelect.value === "__custom") {
+        return regionCustom.value.trim() || "WW";
+      }
+      return regionSelect.value;
+    }
+
+    regionSelect.onchange = () => {
+      regionCustom.style.display = regionSelect.value === "__custom" ? "block" : "none";
+      if (regionSelect.value === "__custom") regionCustom.focus();
+    };
+
+    function updateSearchBtns() {
+      const name = $("name").value.trim();
+      const platform = $("platform").value.trim();
+      mobyBtn.disabled = !name;
+      metaBtn.disabled = !(name && platform);
+    }
+
+    $("name").addEventListener("input", updateSearchBtns);
+    $("platform").addEventListener("input", updateSearchBtns);
+
+    mobyBtn.onclick = () => {
+      const name = $("name").value.trim();
+      if (!name) return;
+      const url = `https://www.mobygames.com/search/?q=${encodeURIComponent(name)}&type=game`;
+      window.open(url, "_blank");
+    };
+
+    metaBtn.onclick = () => {
+      const name = $("name").value.trim();
+      const platform = normalizePlatform($("platform").value.trim());
+      if (!name || !platform) return;
+
+      const mcPlatform = METACRITIC_PLATFORM[platform] || "";
+      // Metacritic search with game name; platform filter when available
+      let url;
+      if (mcPlatform) {
+        url = `https://www.metacritic.com/search/${encodeURIComponent(name)}/?page=1&category=13&platform=${encodeURIComponent(mcPlatform)}`;
+      } else {
+        url = `https://www.metacritic.com/search/${encodeURIComponent(name)}/?page=1&category=13`;
+      }
+      window.open(url, "_blank");
+    };
+
+    function renderQueue() {
+      queueCount.textContent = queue.length;
+      queueSection.hidden = queue.length === 0;
+      downloadBtn.disabled = queue.length === 0 && baseGames.length === 0;
+      queueList.innerHTML = queue.map((g, i) => `
+        <div class="queue-item">
+          <span>${g.Name} <small style="color:var(--muted)">(${g.Platform})</small></span>
+          <button type="button" data-i="${i}">Remove</button>
+        </div>
+      `).join("");
+      queueList.querySelectorAll("button").forEach(btn => {
+        btn.onclick = () => {
+          queue.splice(+btn.dataset.i, 1);
+          renderQueue();
+        };
+      });
+    }
+
+    function populatePlatforms() {
+      knownPlatforms = [...new Set([
+        ...CANONICAL_PLATFORMS,
+        ...baseGames.map(g => g.Platform).filter(Boolean)
+      ])].sort();
+      platformList.innerHTML = knownPlatforms.map(p => `<option value="${p}">`).join("");
+    }
+
+    $("loadBtn").onclick = async () => {
+      try {
+        const res = await fetch("games.json");
+        if (res.ok) {
+          baseGames = await res.json();
+          populatePlatforms();
+          showStatus(`Loaded ${baseGames.length} existing games`);
+          downloadBtn.disabled = false;
+          return;
+        }
+      } catch (_) {}
+
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".json,application/json";
+      input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) return;
+        try {
+          baseGames = JSON.parse(await file.text());
+          populatePlatforms();
+          showStatus(`Loaded ${baseGames.length} games from ${file.name}`);
+          downloadBtn.disabled = false;
+        } catch (e) {
+          showStatus("Could not parse JSON file", "err");
+        }
+      };
+      input.click();
+    };
+
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const score = parseFloat($("score").value) || 0;
+      const year = parseInt($("year").value, 10) || 0;
+      const rawPlatform = $("platform").value.trim();
+      const platform = normalizePlatform(rawPlatform);
+
+      if (platform !== rawPlatform) {
+        $("platform").value = platform;
+      }
+
+      const game = {
+        Name: $("name").value.trim(),
+        Platform: platform,
+        Region: getRegion(),
+        "Release Year": year,
+        Score: score,
+        "Review Summary": summaryFromScore(score),
+        Developer: $("developer").value.trim(),
+        Link: $("link").value.trim(),
+        ProductID: $("productId").value.trim()
+      };
+
+      if (!game.Name || !game.Platform) {
+        showStatus("Name and Platform are required", "err");
+        return;
+      }
+
+      queue.push(game);
+      renderQueue();
+
+      const note = platform !== rawPlatform
+        ? `Queued "${game.Name}" (platform normalized to "${platform}")`
+        : `Queued "${game.Name}"`;
+      showStatus(note);
+
+      const plat = $("platform").value;
+      const regSel = regionSelect.value;
+      const regCust = regionCustom.value;
+      form.reset();
+      $("platform").value = plat;
+      regionSelect.value = regSel;
+      regionCustom.value = regCust;
+      regionCustom.style.display = regSel === "__custom" ? "block" : "none";
+      updateSearchBtns();
+      $("name").focus();
+    };
+
+    function downloadJSON(data, filename) {
+      const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    downloadBtn.onclick = () => {
+      if (baseGames.length === 0 && queue.length === 0) {
+        showStatus("Load games.json first (or queue at least one game)", "err");
+        return;
+      }
+
+      // Backup original before saving
+      if (baseGames.length > 0) {
+        const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+        downloadJSON(baseGames, `games.backup-${ts}.json`);
+      }
+
+      const combined = [...baseGames, ...queue];
+      // Small delay so the browser doesn't block the second download
+      setTimeout(() => {
+        downloadJSON(combined, "games.json");
+        showStatus(`Backup saved + downloaded games.json (${combined.length} games)`);
+      }, 400);
+    };
+
+    populatePlatforms();
+    $("loadBtn").click();
+  </script>
+</body>
+</html>
