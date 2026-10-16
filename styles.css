@@ -84,14 +84,28 @@ body {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  padding-bottom: 12px;
+  padding-bottom: 10px;
   margin-bottom: 2px;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
 .platform-tabs::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+}
+
+.platform-tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.platform-tabs::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.platform-tabs::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .platform-tab {

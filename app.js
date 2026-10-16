@@ -8,7 +8,6 @@
 
   const PLATFORM_ORDER = [
     "All",
-    "PC",
     "PlayStation 1",
     "PlayStation 2",
     "PlayStation 3",
@@ -16,14 +15,17 @@
     "PlayStation 5",
     "PSP",
     "PS Vita",
-    "Nintendo Switch",
+    "Nintendo DS",
     "Nintendo 3DS",
+    "Nintendo Switch",
     "Wii",
     "Wii U",
     "Xbox",
     "Xbox 360",
     "Xbox One",
-    "Xbox Series X|S"
+    "Xbox Series X|S",
+    "PC (Physical)",
+    "PC (Steam)"
   ];
 
   // Region → flag emoji
@@ -50,6 +52,8 @@
   // ── DOM ──
   const $search = document.getElementById("search");
   const $clear = document.getElementById("clearSearch");
+  const $media = document.getElementById("mediaFilter");
+  const $region = document.getElementById("regionFilter");
   const $rating = document.getElementById("ratingFilter");
   const $year = document.getElementById("yearFilter");
   const $sort = document.getElementById("sortBy");
@@ -80,6 +84,16 @@
   function formatScore(score) {
     if (!score || score <= 0) return "—";
     return Number.isInteger(score) ? score : score.toFixed(1);
+  }
+
+  // Physical vs Digital detection
+  function isPhysical(game) {
+    const p = game.Platform || "";
+    // Explicit physical platforms
+    if (p === "PC (Physical)") return true;
+    if (p === "PC (Steam)") return false;
+    // Everything else (consoles) is treated as physical
+    return true;
   }
 
   function regionDisplay(region) {
@@ -122,6 +136,14 @@
       });
       $tabs.appendChild(btn);
     });
+
+    // Allow mouse wheel to scroll tabs horizontally on desktop
+    $tabs.addEventListener("wheel", (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        $tabs.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
   }
 
   // ── Render cards ──
@@ -154,10 +176,9 @@
 
       const badgeClass = ratingClass(g["Review Summary"]);
       const regionHtml = regionDisplay(g.Region);
-      const platformLabel =
-        g.Platform && g.Platform !== "PC"
-          ? `<span class="meta-item">${escapeHtml(g.Platform)}</span>`
-          : "";
+      const platformLabel = g.Platform
+        ? `<span class="meta-item">${escapeHtml(g.Platform)}</span>`
+        : "";
 
       a.innerHTML = `
         <div class="card-header">
@@ -182,6 +203,8 @@
   // ── Filter + Sort ──
   function applyFilters() {
     const q = $search.value.trim().toLowerCase();
+    const media = $media.value;
+    const region = $region.value;
     const rating = $rating.value;
     const year = $year.value;
     const sort = $sort.value;
@@ -189,6 +212,15 @@
     filtered = allGames.filter((g) => {
       if (currentPlatform !== "All") {
         if ((g.Platform || "Unknown") !== currentPlatform) return false;
+      }
+
+      // Physical / Digital filter
+      if (media === "physical" && !isPhysical(g)) return false;
+      if (media === "digital" && isPhysical(g)) return false;
+
+      // Region filter
+      if (region !== "all") {
+        if ((g.Region || "WW") !== region) return false;
       }
 
       if (q) {
@@ -245,6 +277,22 @@
     });
   }
 
+  // ── Populate region filter (only regions that exist) ──
+  function populateRegions() {
+    while ($region.options.length > 1) $region.remove(1);
+
+    const regions = [...new Set(allGames.map((g) => g.Region || "WW"))]
+      .sort((a, b) => a.localeCompare(b));
+
+    regions.forEach((r) => {
+      const opt = document.createElement("option");
+      opt.value = r;
+      const flag = REGION_FLAGS[r] || "";
+      opt.textContent = flag ? `${flag} ${r}` : r;
+      $region.appendChild(opt);
+    });
+  }
+
   // ── Export current view as CSV ──
   function exportCSV() {
     if (!filtered.length) {
@@ -292,6 +340,8 @@
     $search.focus();
   });
 
+  $media.addEventListener("change", applyFilters);
+  $region.addEventListener("change", applyFilters);
   $rating.addEventListener("change", applyFilters);
   $year.addEventListener("change", applyFilters);
   $sort.addEventListener("change", applyFilters);
@@ -299,6 +349,8 @@
   $reset.addEventListener("click", () => {
     $search.value = "";
     $clear.classList.remove("visible");
+    $media.value = "both";
+    $region.value = "all";
     $rating.value = "all";
     $year.value = "all";
     $sort.value = "name";
@@ -323,6 +375,7 @@
       $stats.textContent = `${allGames.length} games`;
       buildPlatformTabs();
       populateYears();
+      populateRegions();
       applyFilters();
     } catch (err) {
       $list.innerHTML = "";
