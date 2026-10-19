@@ -244,6 +244,68 @@
     }
     .quick-parse label { margin-top: 0; }
     .quick-parse .btn-row { margin-top: 10px; }
+  
+    .queue-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .queue-header h2 { margin-bottom: 0; }
+    .drop-zone {
+      position: relative;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 20px 12px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      background: var(--bg);
+      cursor: pointer;
+    }
+    .drop-zone.dragover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(102,192,244,0.08);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .lib-results {
+      margin-top: 8px;
+      max-height: 180px;
+      overflow-y: auto;
+      border-radius: 8px;
+    }
+    .lib-result {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .lib-result:hover { background: var(--surface-hover); }
+    .lib-result small { color: var(--muted); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      font-size: 0.8rem;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
   </style>
 </head>
 <body>
@@ -308,6 +370,14 @@
     </details>
 
     <details class="advanced">
+      <summary>Edit existing library game</summary>
+      <label for="libSearch">Search loaded library</label>
+      <input id="libSearch" placeholder="Type a game name…" autocomplete="off" />
+      <div id="libResults" class="lib-results"></div>
+      <p class="hint">Pick a game to load it into the form, edit, then submit to update the library</p>
+    </details>
+
+    <details class="advanced">
       <summary>Bulk add</summary>
       <label for="parseLine">From line</label>
       <input id="parseLine" placeholder="Name | Platform | Serial | URL" />
@@ -316,11 +386,15 @@
         <button type="button" id="parseBtn" class="btn-secondary">Parse into form</button>
       </div>
 
-      <label for="importFile" style="margin-top:16px">From CSV / Excel</label>
-      <input id="importFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+      <label style="margin-top:16px">From CSV / Excel</label>
+      <div id="dropZone" class="drop-zone">
+        <input id="importFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+        <p>Drop a file here or click to browse</p>
+      </div>
       <p class="hint">Columns: Name, Platform, Developer (required). Optional: Region, Release Year, Score, Link, ProductID, Note</p>
       <div class="btn-row" style="margin-top:10px">
         <button type="button" id="importBtn" class="btn-secondary">Import file into queue</button>
+        <button type="button" id="templateBtn" class="btn-ghost">CSV template</button>
       </div>
     </details>
 
@@ -334,7 +408,10 @@
   <div id="status" class="status"></div>
 
   <div class="queue" id="queueSection" hidden>
-    <h2>Queued games (<span id="queueCount">0</span>)</h2>
+    <div class="queue-header">
+      <h2>Queued games (<span id="queueCount">0</span>)</h2>
+      <button type="button" id="undoBtn" class="btn-ghost" disabled title="Undo last queue change">Undo</button>
+    </div>
     <div id="queueList"></div>
   </div>
 
@@ -344,6 +421,8 @@
     let queue = [];
     let knownPlatforms = [];
     let editingIndex = null; // index in queue when editing
+    let editingLibraryIndex = null; // index in baseGames when editing library record
+    let undoStack = []; // snapshots of queue for undo
     let lastPlatform = "";
     let lastRegionSelect = "EU";
     let lastRegionCustom = "";
@@ -691,13 +770,18 @@
         let added = 0;
         let skipped = 0;
         let dupes = 0;
+        const toAdd = [];
 
         for (let i = 1; i < rows.length; i++) {
           const game = rowToGame(rows[i], headers);
           if (!game) { skipped++; continue; }
           if (isDuplicate(game)) { dupes++; continue; }
-          queue.push(game);
+          toAdd.push(game);
           added++;
+        }
+        if (toAdd.length) {
+          pushUndo();
+          queue.push(...toAdd);
         }
 
         renderQueue();
@@ -713,12 +797,31 @@
     };
 
 
+
+    function pushUndo() {
+      undoStack.push(JSON.parse(JSON.stringify(queue)));
+      if (undoStack.length > 20) undoStack.shift();
+      const ub = $("undoBtn");
+      if (ub) ub.disabled = undoStack.length === 0;
+    }
+
+    function undoLast() {
+      if (!undoStack.length) return;
+      queue = undoStack.pop();
+      cancelEdit();
+      renderQueue();
+      const ub = $("undoBtn");
+      if (ub) ub.disabled = undoStack.length === 0;
+      showStatus("Undid last queue change", "info");
+    }
+
     function isDuplicate(game) {
       const name = (game.Name || "").toLowerCase();
       const plat = (game.Platform || "").toLowerCase();
       const pid = (game.ProductID || "").toLowerCase();
 
-      const inBase = baseGames.some(g => {
+      const inBase = baseGames.some((g, i) => {
+        if (editingLibraryIndex !== null && i === editingLibraryIndex) return false;
         if (pid && g.ProductID && g.ProductID.toLowerCase() === pid) return true;
         return (g.Name || "").toLowerCase() === name && (g.Platform || "").toLowerCase() === plat;
       });
@@ -745,6 +848,7 @@
       `).join("");
       queueList.querySelectorAll(".rm-btn").forEach(btn => {
         btn.onclick = () => {
+          pushUndo();
           queue.splice(+btn.dataset.i, 1);
           if (editingIndex === +btn.dataset.i) cancelEdit();
           else if (editingIndex !== null && editingIndex > +btn.dataset.i) editingIndex--;
@@ -764,10 +868,7 @@
         .replace(/"/g, "&quot;");
     }
 
-    function loadIntoForm(i) {
-      const g = queue[i];
-      if (!g) return;
-      editingIndex = i;
+    function fillFormFromGame(g) {
       $("name").value = g.Name || "";
       $("platform").value = g.Platform || "";
       $("developer").value = g.Developer || "";
@@ -777,18 +878,47 @@
       $("productId").value = g.ProductID || "";
       $("link").value = g.Link || "";
       setRegion(g.Region || "WW");
-      if (g.ProductID || g.Link) document.querySelector("details.advanced").open = true;
-      submitBtn.textContent = "Update queued game";
+      if (g.ProductID || g.Link || g.Note) {
+        document.querySelectorAll("details.advanced").forEach(d => {
+          if (d.querySelector("#productId") || d.querySelector("#note")) d.open = true;
+        });
+      }
       updateSearchBtns();
       updateScorePreview();
-      showStatus(`Editing “${g.Name}” — change fields and submit`, "info");
+    }
+
+    function loadIntoForm(i) {
+      const g = queue[i];
+      if (!g) return;
+      editingLibraryIndex = null;
+      editingIndex = i;
+      fillFormFromGame(g);
+      submitBtn.textContent = "Update queued game";
+      showStatus("Editing \"" + g.Name + "\" in queue — submit to save", "info");
       $("name").focus();
+    }
+
+    function loadLibraryIntoForm(i) {
+      const g = baseGames[i];
+      if (!g) return;
+      editingIndex = null;
+      editingLibraryIndex = i;
+      fillFormFromGame(g);
+      submitBtn.textContent = "Update library game";
+      showStatus("Editing library game \"" + g.Name + "\" — submit to update, then Apply & download", "info");
+      $("name").focus();
+      const lr = $("libResults");
+      const ls = $("libSearch");
+      if (lr) lr.innerHTML = "";
+      if (ls) ls.value = "";
     }
 
     function cancelEdit() {
       editingIndex = null;
+      editingLibraryIndex = null;
       submitBtn.textContent = "Add to queue";
     }
+
 
     function populatePlatforms() {
       knownPlatforms = [...new Set([
@@ -866,8 +996,9 @@
       // Drop empty Note to keep JSON clean
       if (!game.Note) delete game.Note;
 
-      if (isDuplicate(game)) {
-        const ok = confirm(`Possible duplicate:\n“${game.Name}” (${game.Platform})\n\nAdd/update anyway?`);
+            const skipDupCheck = editingIndex !== null || editingLibraryIndex !== null;
+      if (!skipDupCheck && isDuplicate(game)) {
+        const ok = confirm("Possible duplicate:\n\"" + game.Name + "\" (" + game.Platform + ")\n\nAdd/update anyway?");
         if (!ok) {
           showStatus("Skipped — possible duplicate", "warn");
           return;
@@ -878,13 +1009,19 @@
       lastRegionSelect = regionSelect.value;
       lastRegionCustom = regionCustom.value;
 
-      if (editingIndex !== null) {
+      if (editingLibraryIndex !== null) {
+        baseGames[editingLibraryIndex] = game;
+        showStatus("Updated library game \"" + game.Name + "\" — use Apply & download to save");
+        cancelEdit();
+      } else if (editingIndex !== null) {
+        pushUndo();
         queue[editingIndex] = game;
-        showStatus(`Updated “${game.Name}” in queue`);
+        showStatus("Updated \"" + game.Name + "\" in queue");
         cancelEdit();
       } else {
+        pushUndo();
         queue.push(game);
-        showStatus(`Queued “${game.Name}”`);
+        showStatus("Queued \"" + game.Name + "\"");
       }
 
       renderQueue();
@@ -926,6 +1063,11 @@
         showStatus("Load games.json first (or queue at least one game)", "err");
         return;
       }
+      if (queue.length >= 5) {
+        if (!confirm("You are about to merge " + queue.length + " queued games into the library (" + baseGames.length + " existing).\n\nContinue?")) {
+          return;
+        }
+      }
       if (baseGames.length > 0) {
         const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
         downloadJSON(baseGames, `games.backup-${ts}.json`);
@@ -933,9 +1075,66 @@
       const combined = [...baseGames, ...queue];
       setTimeout(() => {
         downloadJSON(combined, "games.json");
-        showStatus(`Backup saved + downloaded games.json (${combined.length} games)`);
+        showStatus("Backup saved + downloaded games.json (" + combined.length + " games)");
       }, 400);
     };
+
+    const undoBtnEl = $("undoBtn");
+    if (undoBtnEl) undoBtnEl.onclick = undoLast;
+
+    $("templateBtn").onclick = () => {
+      const headers = "Name,Platform,Region,Release Year,Score,Developer,Link,ProductID,Note\n";
+      const example = "Example Game,PlayStation 3,EU,2007,82,Example Studio,https://www.mobygames.com/game/123,BCES-00006,CIB\n";
+      const blob = new Blob([headers + example], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "games-import-template.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
+    const dropZone = $("dropZone");
+    const importFile = $("importFile");
+    if (dropZone && importFile) {
+      ["dragenter", "dragover"].forEach(ev => {
+        dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+      });
+      ["dragleave", "drop"].forEach(ev => {
+        dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove("dragover"); });
+      });
+      dropZone.addEventListener("drop", e => {
+        const f = e.dataTransfer.files[0];
+        if (f) {
+          const dt = new DataTransfer();
+          dt.items.add(f);
+          importFile.files = dt.files;
+          showStatus("File ready: " + f.name + " — click Import", "info");
+        }
+      });
+    }
+
+    const libSearch = $("libSearch");
+    const libResults = $("libResults");
+    if (libSearch && libResults) {
+      libSearch.addEventListener("input", () => {
+        const q = libSearch.value.trim().toLowerCase();
+        libResults.innerHTML = "";
+        if (q.length < 2 || !baseGames.length) return;
+        const hits = [];
+        for (let i = 0; i < baseGames.length && hits.length < 15; i++) {
+          const g = baseGames[i];
+          const name = (g.Name || "").toLowerCase();
+          const note = (g.Note || "").toLowerCase();
+          if (name.includes(q) || note.includes(q)) hits.push({ i, g });
+        }
+        libResults.innerHTML = hits.map(({ i, g }) =>
+          `<button type="button" class="lib-result" data-i="${i}">${escapeHtml(g.Name)} <small>(${escapeHtml(g.Platform || "")}${g.Note ? " · " + escapeHtml(g.Note) : ""})</small></button>`
+        ).join("") || `<div class="hint" style="padding:8px">No matches</div>`;
+        libResults.querySelectorAll(".lib-result").forEach(btn => {
+          btn.onclick = () => loadLibraryIntoForm(+btn.dataset.i);
+        });
+      });
+    }
 
     initTheme();
     populatePlatforms();

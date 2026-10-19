@@ -236,7 +236,8 @@
       if (q) {
         const name = (g.Name || "").toLowerCase();
         const dev = (g.Developer || "").toLowerCase();
-        if (!name.includes(q) && !dev.includes(q)) return false;
+        const note = (g.Note || "").toLowerCase();
+        if (!name.includes(q) && !dev.includes(q) && !note.includes(q)) return false;
       }
 
       if (rating !== "all") {
