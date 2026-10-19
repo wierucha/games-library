@@ -412,12 +412,12 @@
       </div>
       <div>
         <label for="year">Release Year</label>
-        <input id="year" type="number" min="1970" max="2030" placeholder="2007" />
+        <input id="year" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="2007" autocomplete="off" />
       </div>
     </div>
 
     <label for="score">Score (0–100)</label>
-    <input id="score" type="number" min="0" max="100" step="0.1" placeholder="82" />
+    <input id="score" type="text" inputmode="decimal" pattern="[0-9.]*%?" maxlength="6" placeholder="82" autocomplete="off" />
     <p class="preview" id="scorePreview"></p>
 
     <details class="advanced">
@@ -686,7 +686,22 @@
 
     $("name").addEventListener("input", updateSearchBtns);
     $("platform").addEventListener("input", updateSearchBtns);
-    $("score").addEventListener("input", updateScorePreview);
+    $("year").addEventListener("input", () => {
+      const el = $("year");
+      el.value = el.value.replace(/[^0-9]/g, "").slice(0, 4);
+    });
+    $("score").addEventListener("input", () => {
+      const el = $("score");
+      // Allow digits, one decimal point, and optional %
+      let v = el.value.replace(/[^0-9.%]/g, "");
+      const hasPct = v.includes("%");
+      v = v.replace(/%/g, "");
+      const parts = v.split(".");
+      if (parts.length > 2) v = parts[0] + "." + parts.slice(1).join("");
+      if (hasPct) v += "%";
+      el.value = v;
+      updateScorePreview();
+    });
 
     // Auto region from ProductID
     $("productId").addEventListener("input", () => {
@@ -1035,7 +1050,6 @@
           baseGames = await res.json();
           populatePlatforms();
           libraryDirty = false;
-          showStatus(`Loaded ${baseGames.length} games from JSON · Queue: ${queue.length}`);
           updateSaveEnabled();
           return;
         }
@@ -1051,7 +1065,6 @@
           baseGames = JSON.parse(await file.text());
           populatePlatforms();
           libraryDirty = false;
-          showStatus(`Loaded ${baseGames.length} games from ${file.name} · Queue: ${queue.length}`);
           updateSaveEnabled();
         } catch (e) {
           showStatus("Could not parse JSON file", "err");
