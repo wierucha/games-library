@@ -211,6 +211,16 @@
   }
 
   // ── Filter + Sort ──
+  function normalizeSearch(s) {
+    return String(s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // strip diacritics
+      .replace(/[^a-z0-9\s]/g, " ")   // punctuation → space
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function applyFilters() {
     const q = $search.value.trim().toLowerCase();
     const media = $media.value;
@@ -234,10 +244,11 @@
       }
 
       if (q) {
-        const name = (g.Name || "").toLowerCase();
-        const dev = (g.Developer || "").toLowerCase();
-        const note = (g.Note || "").toLowerCase();
-        if (!name.includes(q) && !dev.includes(q) && !note.includes(q)) return false;
+        const nq = normalizeSearch(q);
+        const name = normalizeSearch(g.Name);
+        const dev = normalizeSearch(g.Developer);
+        const note = normalizeSearch(g.Note);
+        if (!name.includes(nq) && !dev.includes(nq) && !note.includes(nq)) return false;
       }
 
       if (rating !== "all") {

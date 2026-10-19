@@ -596,6 +596,16 @@
       return trimmed;
     }
 
+    function normalizeSearch(s) {
+      return String(s || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
     function summaryFromScore(score) {
       if (!score || score <= 0) return "No user reviews";
       if (score >= 90) return "Overwhelmingly Positive";
@@ -1232,15 +1242,16 @@
     const libResults = $("libResults");
     if (libSearch && libResults) {
       libSearch.addEventListener("input", () => {
-        const q = libSearch.value.trim().toLowerCase();
+        const q = normalizeSearch(libSearch.value);
         libResults.innerHTML = "";
         if (q.length < 2 || !baseGames.length) return;
         const hits = [];
         for (let i = 0; i < baseGames.length && hits.length < 15; i++) {
           const g = baseGames[i];
-          const name = (g.Name || "").toLowerCase();
-          const note = (g.Note || "").toLowerCase();
-          if (name.includes(q) || note.includes(q)) hits.push({ i, g });
+          const name = normalizeSearch(g.Name);
+          const note = normalizeSearch(g.Note);
+          const dev = normalizeSearch(g.Developer);
+          if (name.includes(q) || note.includes(q) || dev.includes(q)) hits.push({ i, g });
         }
         libResults.innerHTML = hits.map(({ i, g }) =>
           `<button type="button" class="lib-result" data-i="${i}">${escapeHtml(g.Name)} <small>(${escapeHtml(g.Platform || "")}${g.Note ? " · " + escapeHtml(g.Note) : ""})</small></button>`
