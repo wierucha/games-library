@@ -185,6 +185,10 @@
         ? `<span class="meta-item">${escapeHtml(g.Platform)}</span>`
         : "";
 
+      const noteHtml = g.Note
+        ? `<div class="game-note">${escapeHtml(g.Note)}</div>`
+        : "";
+
       a.innerHTML = `
         <div class="card-header">
           <div class="game-name">${escapeHtml(g.Name)}${regionHtml}</div>
@@ -196,6 +200,7 @@
           ${platformLabel}
         </div>
         <div class="developer">${escapeHtml(g.Developer || "Unknown")}</div>
+        ${noteHtml}
       `;
 
       frag.appendChild(a);
@@ -305,7 +310,7 @@
       return;
     }
 
-    const headers = ["Name", "Platform", "Region", "Release Year", "Score", "Review Summary", "Developer", "Link", "ProductID"];
+    const headers = ["Name", "Platform", "Region", "Release Year", "Score", "Review Summary", "Developer", "Link", "ProductID", "Note"];
     const rows = filtered.map((g) =>
       headers.map((h) => {
         let val = g[h] ?? "";

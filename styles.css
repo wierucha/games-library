@@ -411,6 +411,14 @@ body {
   text-overflow: ellipsis;
 }
 
+.game-note {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.9;
+}
+
 /* Empty state */
 .empty-state {
   text-align: center;
