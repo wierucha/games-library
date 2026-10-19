@@ -41,23 +41,41 @@
       max-width: 520px;
       margin: 0 auto;
     }
+    body, input, select, textarea, button, .drop-zone, details.advanced, .status, .queue-item, .lib-result {
+      transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+    }
     .top-bar {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
       gap: 12px;
       margin-bottom: 6px;
     }
     h1 { font-size: 1.25rem; }
     .theme-btn {
-      width: 34px; height: 34px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       border: 1px solid var(--border);
       background: var(--surface);
       color: var(--text);
-      font-size: 1rem;
+      font-size: 1.1rem;
+      font-weight: 400;
+      line-height: 1;
       cursor: pointer;
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, transform 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .theme-btn:hover {
+      background: var(--surface-hover);
+    }
+    .theme-btn:active {
+      transform: scale(0.92);
     }
     .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 8px; }
     .lib-stats {
