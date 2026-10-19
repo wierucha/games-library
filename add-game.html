@@ -104,6 +104,16 @@
       margin-top: 22px;
       flex-wrap: wrap;
     }
+    .btn-row-main {
+      flex-wrap: nowrap;
+    }
+    .btn-row-main button {
+      flex: 1;
+      min-width: 0;
+      padding: 11px 10px;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
     .search-btns {
       display: flex;
       gap: 8px;
@@ -245,8 +255,6 @@
     <button type="button" id="themeToggle" class="theme-btn" aria-label="Toggle theme" title="Toggle theme">☾</button>
   </div>
 
-  <div class="lib-stats" id="libStats">Library: — · Queue: 0</div>
-
   <form id="form">
     <label for="name">Name <span class="req">*</span></label>
     <input id="name" required placeholder="e.g. The Last of Us" />
@@ -309,10 +317,10 @@
       </div>
     </details>
 
-    <div class="btn-row">
+    <div class="btn-row btn-row-main">
       <button type="submit" class="btn-primary" id="submitBtn">Add to queue</button>
       <button type="button" id="loadBtn" class="btn-secondary">Load games.json</button>
-      <button type="button" id="downloadBtn" class="btn-primary" disabled>Download updated JSON</button>
+      <button type="button" id="downloadBtn" class="btn-primary" disabled>Apply & download</button>
     </div>
   </form>
 
@@ -345,7 +353,6 @@
     const regionSelect = $("regionSelect");
     const regionCustom = $("regionCustom");
     const submitBtn = $("submitBtn");
-    const libStats = $("libStats");
     const scorePreview = $("scorePreview");
     const themeBtn = $("themeToggle");
 
@@ -465,10 +472,6 @@
       }
     }
 
-    function updateLibStats() {
-      libStats.textContent = `Library: ${baseGames.length} · Queue: ${queue.length}`;
-    }
-
     function updateScorePreview() {
       const score = parseFloat($("score").value);
       if (!score && score !== 0) {
@@ -586,7 +589,6 @@
       queueCount.textContent = queue.length;
       queueSection.hidden = queue.length === 0;
       downloadBtn.disabled = queue.length === 0 && baseGames.length === 0;
-      updateLibStats();
       queueList.innerHTML = queue.map((g, i) => `
         <div class="queue-item">
           <span>${escapeHtml(g.Name)} <small style="color:var(--muted)">(${escapeHtml(g.Platform)})</small></span>
@@ -657,8 +659,7 @@
         if (res.ok) {
           baseGames = await res.json();
           populatePlatforms();
-          updateLibStats();
-          showStatus(`Loaded ${baseGames.length} existing games`);
+              showStatus(`Loaded ${baseGames.length} games from JSON · Queue: ${queue.length}`);
           downloadBtn.disabled = false;
           return;
         }
@@ -673,8 +674,7 @@
         try {
           baseGames = JSON.parse(await file.text());
           populatePlatforms();
-          updateLibStats();
-          showStatus(`Loaded ${baseGames.length} games from ${file.name}`);
+              showStatus(`Loaded ${baseGames.length} games from ${file.name} · Queue: ${queue.length}`);
           downloadBtn.disabled = false;
         } catch (e) {
           showStatus("Could not parse JSON file", "err");
@@ -794,8 +794,6 @@
 
     initTheme();
     populatePlatforms();
-    updateLibStats();
-
     // Restore last platform / developer / region
     try {
       const rp = localStorage.getItem("addGame_platform");
