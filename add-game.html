@@ -428,9 +428,9 @@
     </details>
 
     <div class="btn-row btn-row-main">
-      <button type="submit" class="btn-primary" id="submitBtn">Add to queue</button>
-      <button type="button" id="loadBtn" class="btn-secondary">Load games.json</button>
-      <button type="button" id="downloadBtn" class="btn-primary" disabled>Apply & download</button>
+      <button type="button" id="loadBtn" class="btn-secondary">Load</button>
+      <button type="submit" class="btn-primary" id="submitBtn">Queue</button>
+      <button type="button" id="downloadBtn" class="btn-primary" disabled>Save</button>
     </div>
   </form>
 
@@ -925,7 +925,7 @@
       editingLibraryIndex = null;
       editingIndex = i;
       fillFormFromGame(g);
-      submitBtn.textContent = "Update queued game";
+      submitBtn.textContent = "Update";
       showStatus("Editing \"" + g.Name + "\" in queue — submit to save", "info");
       $("name").focus();
     }
@@ -936,8 +936,8 @@
       editingIndex = null;
       editingLibraryIndex = i;
       fillFormFromGame(g);
-      submitBtn.textContent = "Update library game";
-      showStatus("Editing library game \"" + g.Name + "\" — submit to update, then Apply & download", "info");
+      submitBtn.textContent = "Update";
+      showStatus("Editing library game \"" + g.Name + "\" — submit to update, then Save", "info");
       $("name").focus();
       const lr = $("libResults");
       const ls = $("libSearch");
@@ -948,7 +948,7 @@
     function cancelEdit() {
       editingIndex = null;
       editingLibraryIndex = null;
-      submitBtn.textContent = "Add to queue";
+      submitBtn.textContent = "Queue";
     }
 
 
@@ -1043,7 +1043,7 @@
 
       if (editingLibraryIndex !== null) {
         baseGames[editingLibraryIndex] = game;
-        showStatus("Updated library game \"" + game.Name + "\" — use Apply & download to save");
+        showStatus("Updated library game \"" + game.Name + "\" — use Save to download");
         cancelEdit();
       } else if (editingIndex !== null) {
         pushUndo();
