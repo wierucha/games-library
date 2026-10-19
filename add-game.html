@@ -308,12 +308,19 @@
     </details>
 
     <details class="advanced">
-      <summary>Quick-add from line</summary>
-      <label for="parseLine">Paste a pipe-separated line</label>
+      <summary>Bulk add</summary>
+      <label for="parseLine">From line</label>
       <input id="parseLine" placeholder="Name | Platform | Serial | URL" />
-      <p class="hint">Fills the form — review and add to queue</p>
+      <p class="hint">Pipe-separated — fills the form so you can review</p>
       <div class="btn-row" style="margin-top:10px">
         <button type="button" id="parseBtn" class="btn-secondary">Parse into form</button>
+      </div>
+
+      <label for="importFile" style="margin-top:16px">From CSV / Excel</label>
+      <input id="importFile" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+      <p class="hint">Columns: Name, Platform, Developer (required). Optional: Region, Release Year, Score, Link, ProductID, Note</p>
+      <div class="btn-row" style="margin-top:10px">
+        <button type="button" id="importBtn" class="btn-secondary">Import file into queue</button>
       </div>
     </details>
 
@@ -331,6 +338,7 @@
     <div id="queueList"></div>
   </div>
 
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script>
     let baseGames = [];
     let queue = [];
@@ -567,6 +575,143 @@
       updateSearchBtns();
       showStatus("Parsed into form — fill the rest and add to queue", "info");
     };
+
+
+    function normalizeHeader(h) {
+      return String(h || "").trim().toLowerCase().replace(/[_\s]+/g, " ");
+    }
+
+    function rowToGame(row, headers) {
+      const map = {};
+      headers.forEach((h, i) => {
+        map[normalizeHeader(h)] = row[i] != null ? String(row[i]).trim() : "";
+      });
+
+      const get = (...keys) => {
+        for (const k of keys) {
+          if (map[k] !== undefined && map[k] !== "") return map[k];
+        }
+        return "";
+      };
+
+      const name = get("name", "title", "game");
+      const platform = normalizePlatform(get("platform", "system"));
+      const developer = get("developer", "dev", "publisher");
+      if (!name || !platform || !developer) return null;
+
+      const score = parseFloat(get("score", "metascore", "rating")) || 0;
+      const year = parseInt(get("release year", "year", "release"), 10) || 0;
+      let region = get("region") || "WW";
+      const productId = get("productid", "product id", "serial", "titleid", "appid");
+      if (productId && (!region || region === "WW")) {
+        for (const [re, r] of SERIAL_REGION) {
+          if (re.test(productId)) { region = r; break; }
+        }
+      }
+
+      const game = {
+        Name: name,
+        Platform: platform,
+        Region: region,
+        "Release Year": year,
+        Score: score,
+        "Review Summary": summaryFromScore(score),
+        Developer: developer,
+        Link: get("link", "url", "mobygames"),
+        ProductID: productId
+      };
+      const note = get("note", "notes", "comment");
+      if (note) game.Note = note;
+      return game;
+    }
+
+    function parseCSVText(text) {
+      // Simple CSV parser supporting quoted fields
+      const rows = [];
+      let row = [];
+      let cur = "";
+      let inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        const n = text[i + 1];
+        if (inQuotes) {
+          if (c === '"' && n === '"') { cur += '"'; i++; }
+          else if (c === '"') inQuotes = false;
+          else cur += c;
+        } else {
+          if (c === '"') inQuotes = true;
+          else if (c === ",") { row.push(cur); cur = ""; }
+          else if (c === "\n" || c === "\r") {
+            if (c === "\r" && n === "\n") i++;
+            row.push(cur);
+            if (row.some(cell => cell.trim() !== "")) rows.push(row);
+            row = [];
+            cur = "";
+          } else cur += c;
+        }
+      }
+      if (cur.length || row.length) {
+        row.push(cur);
+        if (row.some(cell => cell.trim() !== "")) rows.push(row);
+      }
+      return rows;
+    }
+
+    $("importBtn").onclick = async () => {
+      const fileInput = $("importFile");
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) {
+        showStatus("Choose a CSV or Excel file first", "err");
+        return;
+      }
+
+      try {
+        let rows;
+        const name = file.name.toLowerCase();
+        if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+          if (typeof XLSX === "undefined") {
+            showStatus("Excel library failed to load — try CSV instead", "err");
+            return;
+          }
+          const data = await file.arrayBuffer();
+          const wb = XLSX.read(data, { type: "array" });
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+        } else {
+          const text = await file.text();
+          rows = parseCSVText(text);
+        }
+
+        if (!rows || rows.length < 2) {
+          showStatus("File has no data rows", "err");
+          return;
+        }
+
+        const headers = rows[0];
+        let added = 0;
+        let skipped = 0;
+        let dupes = 0;
+
+        for (let i = 1; i < rows.length; i++) {
+          const game = rowToGame(rows[i], headers);
+          if (!game) { skipped++; continue; }
+          if (isDuplicate(game)) { dupes++; continue; }
+          queue.push(game);
+          added++;
+        }
+
+        renderQueue();
+        fileInput.value = "";
+        let msg = `Imported ${added} game(s) into queue`;
+        if (dupes) msg += ` · ${dupes} duplicate(s) skipped`;
+        if (skipped) msg += ` · ${skipped} row(s) skipped (missing Name/Platform/Developer)`;
+        showStatus(msg, added ? "ok" : "warn");
+      } catch (e) {
+        console.error(e);
+        showStatus("Could not read file", "err");
+      }
+    };
+
 
     function isDuplicate(game) {
       const name = (game.Name || "").toLowerCase();
