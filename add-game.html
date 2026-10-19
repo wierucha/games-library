@@ -245,6 +245,16 @@
     .quick-parse label { margin-top: 0; }
     .quick-parse .btn-row { margin-top: 10px; }
   
+    .back-link {
+      display: inline-block;
+      font-size: 0.85rem;
+      color: var(--accent);
+      text-decoration: none;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .back-link:hover { text-decoration: underline; }
+    .queue-actions { display: flex; gap: 6px; align-items: center; }
     .queue-header {
       display: flex;
       align-items: center;
@@ -311,6 +321,7 @@
 <body>
   <div class="top-bar">
     <div>
+      <a href="index.html" class="back-link">← Library</a>
       <h1>Add Game</h1>
       <p class="sub">Queue games, then download updated games.json</p>
     </div>
@@ -410,7 +421,10 @@
   <div class="queue" id="queueSection" hidden>
     <div class="queue-header">
       <h2>Queued games (<span id="queueCount">0</span>)</h2>
-      <button type="button" id="undoBtn" class="btn-ghost" disabled title="Undo last queue change">Undo</button>
+      <div class="queue-actions">
+        <button type="button" id="undoBtn" class="btn-ghost" disabled title="Undo last queue change">Undo</button>
+        <button type="button" id="clearQueueBtn" class="btn-ghost" title="Clear entire queue">Clear</button>
+      </div>
     </div>
     <div id="queueList"></div>
   </div>
@@ -1081,6 +1095,19 @@
 
     const undoBtnEl = $("undoBtn");
     if (undoBtnEl) undoBtnEl.onclick = undoLast;
+
+    const clearQueueBtn = $("clearQueueBtn");
+    if (clearQueueBtn) {
+      clearQueueBtn.onclick = () => {
+        if (!queue.length) return;
+        if (!confirm("Clear all " + queue.length + " queued game(s)?")) return;
+        pushUndo();
+        queue = [];
+        cancelEdit();
+        renderQueue();
+        showStatus("Queue cleared", "info");
+      };
+    }
 
     $("templateBtn").onclick = () => {
       const headers = "Name,Platform,Region,Release Year,Score,Developer,Link,ProductID,Note\n";
