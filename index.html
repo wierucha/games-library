@@ -85,6 +85,13 @@
     </div>
   </div>
 
+  <button type="button" id="scrollTop" class="scroll-top" aria-label="Back to top" title="Back to top" hidden>↑</button>
+
   <script src="app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  </script>
 </body>
 </html>

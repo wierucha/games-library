@@ -334,6 +334,41 @@
       font-weight: 600;
     }
 
+  
+    .toast-host {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: min(420px, calc(100% - 24px));
+      pointer-events: none;
+    }
+    .toast {
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .toast.ok { background: #1e3a24; color: #9be29b; }
+    .toast.err { background: #3a1e1e; color: #f0a0a0; }
+    .toast.info { background: #1a2a3a; color: #9ec9f0; }
+    .toast.warn { background: #3a3218; color: #f0d78c; }
+    [data-theme="light"] .toast.ok { background: #e5f5e8; color: #1d6b2c; }
+    [data-theme="light"] .toast.err { background: #fdecea; color: #a12828; }
+    [data-theme="light"] .toast.info { background: #e8f2fb; color: #155a8a; }
+    [data-theme="light"] .toast.warn { background: #fff6e0; color: #8a6a00; }
   </style>
 </head>
 <body>
@@ -434,7 +469,8 @@
     </div>
   </form>
 
-  <div id="status" class="status"></div>
+  <div id="status" class="status" hidden></div>
+  <div class="toast-host" id="toastHost"></div>
 
   <div class="queue" id="queueSection" hidden>
     <div class="queue-header">
@@ -455,6 +491,7 @@
     let editingIndex = null; // index in queue when editing
     let editingLibraryIndex = null; // index in baseGames when editing library record
     let undoStack = []; // snapshots of queue for undo
+    let libraryDirty = false;
     let lastPlatform = "";
     let lastRegionSelect = "EU";
     let lastRegionCustom = "";
@@ -569,8 +606,29 @@
     }
 
     function showStatus(msg, type = "ok") {
-      status.textContent = msg;
-      status.className = "status " + type;
+      // Toast (non-layout-shifting)
+      const host = $("toastHost");
+      if (host) {
+        const el = document.createElement("div");
+        el.className = "toast " + type;
+        el.textContent = msg;
+        host.appendChild(el);
+        requestAnimationFrame(() => el.classList.add("show"));
+        setTimeout(() => {
+          el.classList.remove("show");
+          setTimeout(() => el.remove(), 200);
+        }, 2600);
+      }
+      // Keep status node in sync but hidden (for accessibility / debugging)
+      if (status) {
+        status.textContent = msg;
+        status.className = "status " + type;
+        status.hidden = true;
+      }
+    }
+
+    function updateSaveEnabled() {
+      downloadBtn.disabled = !(queue.length > 0 || libraryDirty);
     }
 
     function getRegion() {
@@ -868,7 +926,7 @@
     function renderQueue() {
       queueCount.textContent = queue.length;
       queueSection.hidden = queue.length === 0;
-      downloadBtn.disabled = queue.length === 0 && baseGames.length === 0;
+      updateSaveEnabled();
       queueList.innerHTML = queue.map((g, i) => `
         <div class="queue-item">
           <span>${escapeHtml(g.Name)} <small style="color:var(--muted)">(${escapeHtml(g.Platform)})</small></span>
@@ -966,8 +1024,9 @@
         if (res.ok) {
           baseGames = await res.json();
           populatePlatforms();
-              showStatus(`Loaded ${baseGames.length} games from JSON · Queue: ${queue.length}`);
-          downloadBtn.disabled = false;
+          libraryDirty = false;
+          showStatus(`Loaded ${baseGames.length} games from JSON · Queue: ${queue.length}`);
+          updateSaveEnabled();
           return;
         }
       } catch (_) {}
@@ -981,8 +1040,9 @@
         try {
           baseGames = JSON.parse(await file.text());
           populatePlatforms();
-              showStatus(`Loaded ${baseGames.length} games from ${file.name} · Queue: ${queue.length}`);
-          downloadBtn.disabled = false;
+          libraryDirty = false;
+          showStatus(`Loaded ${baseGames.length} games from ${file.name} · Queue: ${queue.length}`);
+          updateSaveEnabled();
         } catch (e) {
           showStatus("Could not parse JSON file", "err");
         }
@@ -1043,6 +1103,7 @@
 
       if (editingLibraryIndex !== null) {
         baseGames[editingLibraryIndex] = game;
+        libraryDirty = true;
         showStatus("Updated library game \"" + game.Name + "\" — use Save to download");
         cancelEdit();
       } else if (editingIndex !== null) {
@@ -1107,7 +1168,16 @@
       const combined = [...baseGames, ...queue];
       setTimeout(() => {
         downloadJSON(combined, "games.json");
+        libraryDirty = false;
+        // After save, treat downloaded file as new baseline
+        baseGames = combined;
+        queue = [];
+        undoStack = [];
+        const ub = $("undoBtn");
+        if (ub) ub.disabled = true;
+        renderQueue();
         showStatus("Backup saved + downloaded games.json (" + combined.length + " games)");
+        updateSaveEnabled();
       }, 400);
     };
 
@@ -1202,6 +1272,11 @@
     } catch (_) {}
 
     $("loadBtn").click();
+  </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
   </script>
 </body>
 </html>

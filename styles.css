@@ -493,3 +493,59 @@ body {
     background: var(--surface-hover);
   }
 }
+
+
+/* Jump to top */
+.scroll-top {
+  position: fixed;
+  bottom: 20px;
+  right: 16px;
+  z-index: 60;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.15rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, transform 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.scroll-top:active {
+  transform: scale(0.92);
+}
+.scroll-top:hover {
+  background: var(--surface-hover);
+}
+
+/* Denser cards on small screens */
+@media (max-width: 600px) {
+  .game-list {
+    gap: 8px;
+    padding: 0 10px;
+  }
+  .game-card {
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+  .game-name {
+    font-size: 0.98rem;
+  }
+  .card-header {
+    margin-bottom: 4px;
+    gap: 8px;
+  }
+  .developer {
+    margin-top: 4px;
+    font-size: 0.75rem;
+  }
+  .game-note {
+    margin-top: 2px;
+    font-size: 0.72rem;
+  }
+}

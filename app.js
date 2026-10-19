@@ -374,6 +374,28 @@
 
   $export.addEventListener("click", exportCSV);
 
+  // ── Keyboard: / focuses search ──
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+    const tag = (document.activeElement && document.activeElement.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    e.preventDefault();
+    $search.focus();
+    $search.select();
+  });
+
+  // ── Jump to top ──
+  const $scrollTop = document.getElementById("scrollTop");
+  if ($scrollTop) {
+    window.addEventListener("scroll", () => {
+      $scrollTop.hidden = window.scrollY < 400;
+    }, { passive: true });
+    $scrollTop.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+
   // ── Theme ──
   function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
