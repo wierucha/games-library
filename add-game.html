@@ -77,12 +77,7 @@
     .theme-btn:active {
       transform: scale(0.92);
     }
-    .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 4px; }
-    .lib-info {
-      font-size: 0.8rem;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
+    .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 8px; }
     .lib-stats {
       font-size: 0.8rem;
       color: var(--muted);
@@ -382,7 +377,6 @@
       <a href="index.html" class="back-link">← Library</a>
       <h1>Add Game</h1>
       <p class="sub">Queue games, then download updated games.json</p>
-      <p class="lib-info" id="libInfo">No library loaded</p>
     </div>
     <button type="button" id="themeToggle" class="theme-btn" aria-label="Toggle theme" title="Toggle theme">☾</button>
   </div>
@@ -475,7 +469,7 @@
     </div>
   </form>
 
-  <div id="status" class="status" hidden></div>
+  <div id="status" class="status"></div>
   <div class="toast-host" id="toastHost"></div>
 
   <div class="queue" id="queueSection" hidden>
@@ -622,7 +616,7 @@
     }
 
     function showStatus(msg, type = "ok") {
-      // Toast (non-layout-shifting)
+      // Toast (non-layout-shifting) for quick feedback
       const host = $("toastHost");
       if (host) {
         const el = document.createElement("div");
@@ -635,28 +629,18 @@
           setTimeout(() => el.remove(), 200);
         }, 2600);
       }
-      // Keep status node in sync but hidden (for accessibility / debugging)
-      if (status) {
-        status.textContent = msg;
-        status.className = "status " + type;
-        status.hidden = true;
-      }
     }
 
-    function updateLibInfo() {
-      const el = $("libInfo");
-      if (!el) return;
-      if (!baseGames.length) {
-        el.textContent = "No library loaded";
-        return;
-      }
-      const q = queue.length ? ` · Queue: ${queue.length}` : "";
-      el.textContent = `Loaded ${baseGames.length} games${q}`;
+    function showBanner(msg, type = "ok") {
+      // Persistent green/red bar under the buttons
+      if (!status) return;
+      status.hidden = false;
+      status.textContent = msg;
+      status.className = "status " + type;
     }
 
     function updateSaveEnabled() {
       downloadBtn.disabled = !(queue.length > 0 || libraryDirty);
-      updateLibInfo();
     }
 
     function getRegion() {
@@ -1070,6 +1054,7 @@
           populatePlatforms();
           libraryDirty = false;
           updateSaveEnabled();
+          showBanner("Loaded " + baseGames.length + " games from JSON · Queue: " + queue.length);
           return;
         }
       } catch (_) {}
@@ -1085,6 +1070,7 @@
           populatePlatforms();
           libraryDirty = false;
           updateSaveEnabled();
+          showBanner("Loaded " + baseGames.length + " games from " + file.name + " · Queue: " + queue.length);
         } catch (e) {
           showStatus("Could not parse JSON file", "err");
         }
