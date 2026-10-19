@@ -77,7 +77,12 @@
     .theme-btn:active {
       transform: scale(0.92);
     }
-    .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 8px; }
+    .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 4px; }
+    .lib-info {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
     .lib-stats {
       font-size: 0.8rem;
       color: var(--muted);
@@ -377,6 +382,7 @@
       <a href="index.html" class="back-link">← Library</a>
       <h1>Add Game</h1>
       <p class="sub">Queue games, then download updated games.json</p>
+      <p class="lib-info" id="libInfo">No library loaded</p>
     </div>
     <button type="button" id="themeToggle" class="theme-btn" aria-label="Toggle theme" title="Toggle theme">☾</button>
   </div>
@@ -637,8 +643,20 @@
       }
     }
 
+    function updateLibInfo() {
+      const el = $("libInfo");
+      if (!el) return;
+      if (!baseGames.length) {
+        el.textContent = "No library loaded";
+        return;
+      }
+      const q = queue.length ? ` · Queue: ${queue.length}` : "";
+      el.textContent = `Loaded ${baseGames.length} games${q}`;
+    }
+
     function updateSaveEnabled() {
       downloadBtn.disabled = !(queue.length > 0 || libraryDirty);
+      updateLibInfo();
     }
 
     function getRegion() {
@@ -952,6 +970,7 @@
       queueCount.textContent = queue.length;
       queueSection.hidden = queue.length === 0;
       updateSaveEnabled();
+      updateLibInfo();
       queueList.innerHTML = queue.map((g, i) => `
         <div class="queue-item">
           <span>${escapeHtml(g.Name)} <small style="color:var(--muted)">(${escapeHtml(g.Platform)})</small></span>
