@@ -615,8 +615,18 @@
       return "Mostly Negative";
     }
 
+    function showBanner(msg, type = "ok") {
+      // Persistent bar under the buttons
+      if (!status) return;
+      status.hidden = false;
+      status.textContent = msg;
+      status.className = "status " + type;
+    }
+
     function showStatus(msg, type = "ok") {
-      // Toast (non-layout-shifting) for quick feedback
+      // Banner tracks current state
+      showBanner(msg, type);
+      // Toast for quick attention
       const host = $("toastHost");
       if (host) {
         const el = document.createElement("div");
@@ -629,14 +639,6 @@
           setTimeout(() => el.remove(), 200);
         }, 2600);
       }
-    }
-
-    function showBanner(msg, type = "ok") {
-      // Persistent green/red bar under the buttons
-      if (!status) return;
-      status.hidden = false;
-      status.textContent = msg;
-      status.className = "status " + type;
     }
 
     function updateSaveEnabled() {
@@ -1011,7 +1013,7 @@
       editingLibraryIndex = null;
       editingIndex = i;
       fillFormFromGame(g);
-      submitBtn.textContent = "Update";
+      submitBtn.textContent = "Submit";
       showStatus("Editing \"" + g.Name + "\" in queue — submit to save", "info");
       $("name").focus();
     }
@@ -1022,7 +1024,7 @@
       editingIndex = null;
       editingLibraryIndex = i;
       fillFormFromGame(g);
-      submitBtn.textContent = "Update";
+      submitBtn.textContent = "Submit";
       showStatus("Editing library game \"" + g.Name + "\" — submit to update, then Save", "info");
       $("name").focus();
       const lr = $("libResults");
