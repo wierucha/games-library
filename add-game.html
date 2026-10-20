@@ -1,24 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f4f5f7" />
   <title>Add Game – wierucha's Games Library</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <style>
-    :root {
-      --bg: #0f0f13;
-      --surface: #1a1a22;
-      --surface-hover: #24242e;
-      --border: #2a2a36;
-      --text: #f0f0f5;
-      --muted: #9a9aab;
-      --accent: #66c0f4;
-      --ok: #4caf50;
-      --err: #e74c3c;
-      --header-bg: rgba(15, 15, 19, 0.92);
-    }
+    :root,
     [data-theme="light"] {
       --bg: #f4f5f7;
       --surface: #ffffff;
@@ -30,6 +27,18 @@
       --ok: #2e8b3a;
       --err: #c0392b;
       --header-bg: rgba(244, 245, 247, 0.92);
+    }
+    [data-theme="dark"] {
+      --bg: #0f0f13;
+      --surface: #1a1a22;
+      --surface-hover: #24242e;
+      --border: #2a2a36;
+      --text: #f0f0f5;
+      --muted: #9a9aab;
+      --accent: #66c0f4;
+      --ok: #4caf50;
+      --err: #e74c3c;
+      --header-bg: rgba(15, 15, 19, 0.92);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
