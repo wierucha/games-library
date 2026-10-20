@@ -731,7 +731,9 @@
     // Theme
     function applyTheme(theme) {
       document.documentElement.setAttribute("data-theme", theme);
-      themeBtn.textContent = theme === "light" ? "☀" : "☾";
+      // Icon shows the theme you will switch to
+      themeBtn.textContent = theme === "light" ? "☾" : "☀";
+      themeBtn.title = theme === "light" ? "Switch to dark theme" : "Switch to light theme";
       const meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.content = theme === "light" ? "#f4f5f7" : "#0f0f13";
       localStorage.setItem("theme", theme);
@@ -741,7 +743,7 @@
       applyTheme(saved || "light");
     }
     themeBtn.onclick = () => {
-      const cur = document.documentElement.getAttribute("data-theme") || "dark";
+      const cur = document.documentElement.getAttribute("data-theme") || "light";
       applyTheme(cur === "dark" ? "light" : "dark");
     };
 

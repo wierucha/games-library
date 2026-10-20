@@ -410,8 +410,9 @@
   // ── Theme ──
   function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
-    $theme.textContent = theme === "light" ? "☀" : "☾";
-    // Update browser chrome color
+    // Icon shows the theme you will switch to
+    $theme.textContent = theme === "light" ? "☾" : "☀";
+    $theme.title = theme === "light" ? "Switch to dark theme" : "Switch to light theme";
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = theme === "light" ? "#f4f5f7" : "#0f0f13";
     localStorage.setItem("theme", theme);
@@ -423,7 +424,7 @@
   }
 
   $theme.addEventListener("click", () => {
-    const current = document.documentElement.getAttribute("data-theme") || "dark";
+    const current = document.documentElement.getAttribute("data-theme") || "light";
     applyTheme(current === "dark" ? "light" : "dark");
   });
 
