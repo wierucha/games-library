@@ -419,8 +419,7 @@
 
   function initTheme() {
     const saved = localStorage.getItem("theme");
-    const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
-    applyTheme(saved || (prefersLight ? "light" : "dark"));
+    applyTheme(saved || "light");
   }
 
   $theme.addEventListener("click", () => {
