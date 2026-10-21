@@ -3,17 +3,21 @@
 <head>
   <script>
     (function () {
-      try {
-        var t = localStorage.getItem("theme");
-        if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
-      } catch (e) {}
+      var t = null;
+      try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (t !== "dark" && t !== "light") {
+        t = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-theme", t);
     })();
   </script>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#f4f5f7" />
   <title>Add Game – wierucha's Games Library</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
   <style>
     :root,
     [data-theme="light"] {
@@ -46,7 +50,7 @@
       background: var(--bg);
       color: var(--text);
       line-height: 1.45;
-      padding: 20px 16px 60px;
+      padding: calc(20px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) calc(60px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
       max-width: 520px;
       margin: 0 auto;
     }
@@ -87,16 +91,6 @@
       transform: scale(0.92);
     }
     .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 8px; }
-    .lib-stats {
-      font-size: 0.8rem;
-      color: var(--muted);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 6px 12px;
-      border-radius: 20px;
-      display: inline-block;
-      margin-bottom: 18px;
-    }
     label {
       display: block;
       font-size: 0.8rem;
@@ -112,7 +106,7 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       color: var(--text);
-      font-size: 0.95rem;
+      font-size: 1rem; /* 16px: prevents iOS focus-zoom */
       font-family: inherit;
     }
     input:focus, select:focus, textarea:focus {
@@ -201,6 +195,7 @@
     .status.err { display: block; background: rgba(231,76,60,0.15); color: var(--err); }
     .status.info { display: block; background: rgba(102,192,244,0.12); color: var(--accent); }
     .status.warn { display: block; background: rgba(255,193,7,0.15); color: #c49200; }
+    [data-theme="light"] .status.warn { color: #8a6a00; }
     .queue {
       margin-top: 28px;
       border-top: 1px solid var(--border);
@@ -332,22 +327,12 @@
     }
     .lib-result:hover { background: var(--surface-hover); }
     .lib-result small { color: var(--muted); }
-    .btn-ghost {
-      background: transparent;
-      color: var(--muted);
-      border: 1px solid var(--border);
-      font-size: 0.8rem;
-      padding: 8px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-    }
 
   
     .toast-host {
       position: fixed;
       left: 50%;
-      bottom: 24px;
+      bottom: calc(24px + env(safe-area-inset-bottom, 0px));
       transform: translateX(-50%);
       z-index: 100;
       display: flex;
@@ -378,6 +363,13 @@
     [data-theme="light"] .toast.err { background: #fdecea; color: #a12828; }
     [data-theme="light"] .toast.info { background: #e8f2fb; color: #155a8a; }
     [data-theme="light"] .toast.warn { background: #fff6e0; color: #8a6a00; }
+    [hidden] { display: none !important; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: 0; }
+    .cancel-edit-row { margin-top: 10px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -390,7 +382,7 @@
     <button type="button" id="themeToggle" class="theme-btn" aria-label="Toggle theme" title="Toggle theme">☾</button>
   </div>
 
-  <form id="form">
+  <form id="form" novalidate>
     <label for="name">Name <span class="req">*</span></label>
     <input id="name" required placeholder="e.g. The Last of Us" />
 
@@ -411,7 +403,7 @@
         <label for="regionSelect">Region</label>
         <select id="regionSelect">
           <option value="EU">EU</option>
-          <option value="NA">NA</option>
+          <option value="US">US</option>
           <option value="JP">JP</option>
           <option value="ASIA">ASIA</option>
           <option value="WW">WW</option>
@@ -476,10 +468,13 @@
       <button type="submit" class="btn-primary" id="submitBtn">Queue</button>
       <button type="button" id="downloadBtn" class="btn-primary" disabled>Save</button>
     </div>
+    <div class="cancel-edit-row">
+      <button type="button" id="cancelEditBtn" class="btn-ghost" hidden>Cancel edit</button>
+    </div>
   </form>
 
-  <div id="status" class="status"></div>
-  <div class="toast-host" id="toastHost"></div>
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+  <div class="toast-host" id="toastHost" aria-live="polite"></div>
 
   <div class="queue" id="queueSection" hidden>
     <div class="queue-header">
@@ -492,7 +487,6 @@
     <div id="queueList"></div>
   </div>
 
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script>
     let baseGames = [];
     let queue = [];
@@ -501,9 +495,6 @@
     let editingLibraryIndex = null; // index in baseGames when editing library record
     let undoStack = []; // snapshots of queue for undo
     let libraryDirty = false;
-    let lastPlatform = "";
-    let lastRegionSelect = "EU";
-    let lastRegionCustom = "";
 
     const $ = (id) => document.getElementById(id);
     const form = $("form");
@@ -520,6 +511,7 @@
     const submitBtn = $("submitBtn");
     const scorePreview = $("scorePreview");
     const themeBtn = $("themeToggle");
+    const cancelEditBtn = $("cancelEditBtn");
 
     const CANONICAL_PLATFORMS = [
       "PlayStation 1", "PlayStation 2", "PlayStation 3", "PlayStation 4", "PlayStation 5",
@@ -583,11 +575,11 @@
     const SERIAL_REGION = [
       [/^SLES/i, "EU"], [/^SCES/i, "EU"], [/^SLED/i, "EU"], [/^SCED/i, "EU"],
       [/^ULES/i, "EU"], [/^UCES/i, "EU"],
-      [/^SLUS/i, "NA"], [/^SCUS/i, "NA"], [/^ULUS/i, "NA"], [/^UCUS/i, "NA"],
+      [/^SLUS/i, "US"], [/^SCUS/i, "US"], [/^ULUS/i, "US"], [/^UCUS/i, "US"],
       [/^SLPS/i, "JP"], [/^SLPM/i, "JP"], [/^SCPS/i, "JP"], [/^UCJS/i, "JP"],
-      [/^BCES/i, "EU"], [/^BLES/i, "EU"], [/^BLUS/i, "NA"], [/^BLJM/i, "JP"],
-      [/^NTR-.*-EUR/i, "EU"], [/^NTR-.*-USA/i, "NA"], [/^NTR-.*-JPN/i, "JP"],
-      [/^LA-H-.*-EUR/i, "EU"], [/^LA-H-.*-USA/i, "NA"], [/^LA-H-.*-JPN/i, "JP"]
+      [/^BCES/i, "EU"], [/^BLES/i, "EU"], [/^BLUS/i, "US"], [/^BLJM/i, "JP"],
+      [/^NTR-.*-EUR/i, "EU"], [/^NTR-.*-USA/i, "US"], [/^NTR-.*-JPN/i, "JP"],
+      [/^LA-H-.*-EUR/i, "EU"], [/^LA-H-.*-USA/i, "US"], [/^LA-H-.*-JPN/i, "JP"]
     ];
 
     function normalizePlatform(raw) {
@@ -599,8 +591,15 @@
       if (PLATFORM_ALIASES[lower]) return PLATFORM_ALIASES[lower];
       const fromData = knownPlatforms.find(p => p.toLowerCase() === lower);
       if (fromData) return fromData;
-      for (const p of CANONICAL_PLATFORMS) {
-        if (p.toLowerCase().includes(lower) || lower.includes(p.toLowerCase())) return p;
+      // Fuzzy fallback (conservative): input contains a canonical name
+      // ("xbox 360 elite" → Xbox 360, longest wins), or is a fragment of exactly one name.
+      const containing = CANONICAL_PLATFORMS
+        .filter(p => lower.includes(p.toLowerCase()))
+        .sort((a, b) => b.length - a.length);
+      if (containing.length) return containing[0];
+      if (lower.length >= 3) {
+        const fragments = CANONICAL_PLATFORMS.filter(p => p.toLowerCase().includes(lower));
+        if (fragments.length === 1) return fragments[0];
       }
       return trimmed;
     }
@@ -614,6 +613,28 @@
         .replace(/\s+/g, " ")
         .trim();
     }
+
+    function normalizeRegion(code) {
+      const c = String(code || "").trim().toUpperCase();
+      if (!c) return "WW";
+      if (c === "NA" || c === "USA") return "US";
+      return c;
+    }
+
+    // Returns the trimmed URL if it is http(s), otherwise ""
+    function safeHttpUrl(url) {
+      const u = String(url || "").trim();
+      if (!u) return "";
+      try {
+        const parsed = new URL(u);
+        return parsed.protocol === "http:" || parsed.protocol === "https:" ? u : "";
+      } catch (_) {
+        return "";
+      }
+    }
+
+    const YEAR_MIN = 1950;
+    const yearMax = () => new Date().getFullYear() + 2;
 
     function summaryFromScore(score) {
       if (!score || score <= 0) return "No user reviews";
@@ -655,12 +676,13 @@
     }
 
     function getRegion() {
-      if (regionSelect.value === "__custom") return regionCustom.value.trim() || "WW";
+      if (regionSelect.value === "__custom") return normalizeRegion(regionCustom.value);
       return regionSelect.value;
     }
 
     function setRegion(code) {
-      const opts = ["EU", "NA", "JP", "ASIA", "WW"];
+      code = normalizeRegion(code);
+      const opts = ["EU", "US", "JP", "ASIA", "WW"];
       if (opts.includes(code)) {
         regionSelect.value = code;
         regionCustom.style.display = "none";
@@ -689,7 +711,7 @@
     }
 
     function clearInvalid() {
-      ["name", "platform", "developer"].forEach(id => $(id).classList.remove("invalid"));
+      ["name", "platform", "developer", "score", "year", "link"].forEach(id => $(id).classList.remove("invalid"));
     }
 
     regionSelect.onchange = () => {
@@ -729,22 +751,25 @@
     });
 
     // Theme
-    function applyTheme(theme) {
+    function applyTheme(theme, persist) {
       document.documentElement.setAttribute("data-theme", theme);
       // Icon shows the theme you will switch to
       themeBtn.textContent = theme === "light" ? "☾" : "☀";
       themeBtn.title = theme === "light" ? "Switch to dark theme" : "Switch to light theme";
       const meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.content = theme === "light" ? "#f4f5f7" : "#0f0f13";
-      localStorage.setItem("theme", theme);
+      if (persist) { try { localStorage.setItem("theme", theme); } catch (e) {} }
     }
     function initTheme() {
-      const saved = localStorage.getItem("theme");
-      applyTheme(saved || "light");
+      let saved = null;
+      try { saved = localStorage.getItem("theme"); } catch (e) {}
+      if (saved === "dark" || saved === "light") return applyTheme(saved, false);
+      const sys = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      applyTheme(sys, false);
     }
     themeBtn.onclick = () => {
       const cur = document.documentElement.getAttribute("data-theme") || "light";
-      applyTheme(cur === "dark" ? "light" : "dark");
+      applyTheme(cur === "dark" ? "light" : "dark", true);
     };
 
     mobyBtn.onclick = () => {
@@ -809,7 +834,9 @@
 
       const score = parseFloat(get("score", "metascore", "rating")) || 0;
       const year = parseInt(get("release year", "year", "release"), 10) || 0;
-      let region = get("region") || "WW";
+      if (score < 0 || score > 100) return null;
+      if (year && (year < YEAR_MIN || year > yearMax())) return null;
+      let region = normalizeRegion(get("region") || "WW");
       const productId = get("productid", "product id", "serial", "titleid", "appid");
       if (productId && (!region || region === "WW")) {
         for (const [re, r] of SERIAL_REGION) {
@@ -825,7 +852,7 @@
         Score: score,
         "Review Summary": summaryFromScore(score),
         Developer: developer,
-        Link: get("link", "url", "mobygames"),
+        Link: safeHttpUrl(get("link", "url", "mobygames")),
         ProductID: productId
       };
       const note = get("note", "notes", "comment");
@@ -833,8 +860,40 @@
       return game;
     }
 
+    // Excel in many locales (incl. Polish) saves CSV with ; instead of ,
+    function detectDelimiter(text) {
+      const first = text.split(/\r?\n/).find(l => l.trim()) || "";
+      const counts = { ",": 0, ";": 0, "\t": 0 };
+      let inQ = false;
+      for (const ch of first) {
+        if (ch === '"') inQ = !inQ;
+        else if (!inQ && ch in counts) counts[ch]++;
+      }
+      let best = ",";
+      for (const d of [";", "\t"]) if (counts[d] > counts[best]) best = d;
+      return best;
+    }
+
+    // SheetJS is only loaded when an Excel file is actually imported
+    let xlsxPromise = null;
+    function loadXLSX() {
+      if (typeof XLSX !== "undefined") return Promise.resolve();
+      if (!xlsxPromise) {
+        xlsxPromise = new Promise((resolve, reject) => {
+          const el = document.createElement("script");
+          el.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+          el.onload = resolve;
+          el.onerror = () => { xlsxPromise = null; reject(new Error("load failed")); };
+          document.head.appendChild(el);
+        });
+      }
+      return xlsxPromise;
+    }
+
     function parseCSVText(text) {
-      // Simple CSV parser supporting quoted fields
+      // Simple CSV parser supporting quoted fields and , ; tab delimiters
+      text = text.replace(/^\uFEFF/, "");
+      const delim = detectDelimiter(text);
       const rows = [];
       let row = [];
       let cur = "";
@@ -848,7 +907,7 @@
           else cur += c;
         } else {
           if (c === '"') inQuotes = true;
-          else if (c === ",") { row.push(cur); cur = ""; }
+          else if (c === delim) { row.push(cur); cur = ""; }
           else if (c === "\n" || c === "\r") {
             if (c === "\r" && n === "\n") i++;
             row.push(cur);
@@ -877,7 +936,9 @@
         let rows;
         const name = file.name.toLowerCase();
         if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
-          if (typeof XLSX === "undefined") {
+          try {
+            await loadXLSX();
+          } catch (_) {
             showStatus("Excel library failed to load — try CSV instead", "err");
             return;
           }
@@ -904,7 +965,7 @@
         for (let i = 1; i < rows.length; i++) {
           const game = rowToGame(rows[i], headers);
           if (!game) { skipped++; continue; }
-          if (isDuplicate(game)) { dupes++; continue; }
+          if (isDuplicate(game, toAdd)) { dupes++; continue; }
           toAdd.push(game);
           added++;
         }
@@ -917,7 +978,7 @@
         fileInput.value = "";
         let msg = `Imported ${added} game(s) into queue`;
         if (dupes) msg += ` · ${dupes} duplicate(s) skipped`;
-        if (skipped) msg += ` · ${skipped} row(s) skipped (missing Name/Platform/Developer)`;
+        if (skipped) msg += ` · ${skipped} row(s) skipped (missing or invalid fields)`;
         showStatus(msg, added ? "ok" : "warn");
       } catch (e) {
         console.error(e);
@@ -944,29 +1005,32 @@
       showStatus("Undid last queue change", "info");
     }
 
-    function isDuplicate(game) {
-      const name = (game.Name || "").toLowerCase();
-      const plat = (game.Platform || "").toLowerCase();
-      const pid = (game.ProductID || "").toLowerCase();
+    function isDuplicate(game, extra = []) {
+      const key = (g) => normalizeSearch(g.Name) + "|" + (g.Platform || "").toLowerCase();
+      const k = key(game);
+      const pid = (game.ProductID || "").trim().toLowerCase();
+
+      const same = (g) => {
+        if (pid && g.ProductID && String(g.ProductID).trim().toLowerCase() === pid) return true;
+        return key(g) === k;
+      };
 
       const inBase = baseGames.some((g, i) => {
         if (editingLibraryIndex !== null && i === editingLibraryIndex) return false;
-        if (pid && g.ProductID && g.ProductID.toLowerCase() === pid) return true;
-        return (g.Name || "").toLowerCase() === name && (g.Platform || "").toLowerCase() === plat;
+        return same(g);
       });
       const inQueue = queue.some((g, i) => {
         if (editingIndex !== null && i === editingIndex) return false;
-        if (pid && g.ProductID && g.ProductID.toLowerCase() === pid) return true;
-        return (g.Name || "").toLowerCase() === name && (g.Platform || "").toLowerCase() === plat;
+        return same(g);
       });
-      return inBase || inQueue;
+      return inBase || inQueue || extra.some(same);
     }
 
     function renderQueue() {
       queueCount.textContent = queue.length;
       queueSection.hidden = queue.length === 0;
       updateSaveEnabled();
-      updateLibInfo();
+      saveQueue();
       queueList.innerHTML = queue.map((g, i) => `
         <div class="queue-item">
           <span>${escapeHtml(g.Name)} <small style="color:var(--muted)">(${escapeHtml(g.Platform)})</small></span>
@@ -995,8 +1059,33 @@
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
     }
+
+    // Queue survives refreshes / accidental tab closes
+    const QUEUE_KEY = "addGame_queue";
+    function saveQueue() {
+      try {
+        if (queue.length) localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+        else localStorage.removeItem(QUEUE_KEY);
+      } catch (_) {}
+    }
+    function loadSavedQueue() {
+      try {
+        const raw = localStorage.getItem(QUEUE_KEY);
+        if (!raw) return;
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr)) return;
+        queue = arr.filter(g => g && g.Name && g.Platform);
+        if (queue.length) renderQueue();
+      } catch (_) {}
+    }
+
+    window.addEventListener("beforeunload", (e) => {
+      // Queue is persisted; only unsaved edits to existing library games would be lost
+      if (libraryDirty) { e.preventDefault(); e.returnValue = ""; }
+    });
 
     function fillFormFromGame(g) {
       $("name").value = g.Name || "";
@@ -1024,6 +1113,7 @@
       editingIndex = i;
       fillFormFromGame(g);
       submitBtn.textContent = "Submit";
+      cancelEditBtn.hidden = false;
       showStatus("Editing \"" + g.Name + "\" in queue — submit to save", "info");
       $("name").focus();
     }
@@ -1035,6 +1125,7 @@
       editingLibraryIndex = i;
       fillFormFromGame(g);
       submitBtn.textContent = "Submit";
+      cancelEditBtn.hidden = false;
       showStatus("Editing library game \"" + g.Name + "\" — submit to update, then Save", "info");
       $("name").focus();
       const lr = $("libResults");
@@ -1047,7 +1138,32 @@
       editingIndex = null;
       editingLibraryIndex = null;
       submitBtn.textContent = "Queue";
+      cancelEditBtn.hidden = true;
     }
+
+    // Clear the form but keep platform / developer / region for the next entry
+    function resetFormKeepingDefaults() {
+      const plat = $("platform").value;
+      const dev = $("developer").value;
+      const regSel = regionSelect.value;
+      const regCust = regionCustom.value;
+      form.reset();
+      $("platform").value = plat;
+      $("developer").value = dev;
+      regionSelect.value = regSel;
+      regionCustom.value = regCust;
+      regionCustom.style.display = regSel === "__custom" ? "block" : "none";
+      scorePreview.textContent = "";
+      clearInvalid();
+      updateSearchBtns();
+      $("name").focus();
+    }
+
+    cancelEditBtn.onclick = () => {
+      cancelEdit();
+      resetFormKeepingDefaults();
+      showStatus("Edit cancelled", "info");
+    };
 
 
     function populatePlatforms() {
@@ -1055,22 +1171,20 @@
         ...CANONICAL_PLATFORMS,
         ...baseGames.map(g => g.Platform).filter(Boolean)
       ])].sort();
-      platformList.innerHTML = knownPlatforms.map(p => `<option value="${p}">`).join("");
+      platformList.innerHTML = knownPlatforms.map(p => `<option value="${escapeHtml(p)}">`).join("");
     }
 
-    $("loadBtn").onclick = async () => {
-      try {
-        const res = await fetch("games.json");
-        if (res.ok) {
-          baseGames = await res.json();
-          populatePlatforms();
-          libraryDirty = false;
-          updateSaveEnabled();
-          showBanner("Loaded " + baseGames.length + " games from JSON · Queue: " + queue.length);
-          return;
-        }
-      } catch (_) {}
+    function applyLoadedLibrary(data, label) {
+      if (!Array.isArray(data)) throw new Error("not an array");
+      baseGames = data;
+      cancelEdit(); // library indexes changed
+      populatePlatforms();
+      libraryDirty = false;
+      updateSaveEnabled();
+      showBanner("Loaded " + baseGames.length + " games from " + label + " · Queue: " + queue.length);
+    }
 
+    function pickLibraryFile() {
       const input = document.createElement("input");
       input.type = "file";
       input.accept = ".json,application/json";
@@ -1078,17 +1192,33 @@
         const file = input.files[0];
         if (!file) return;
         try {
-          baseGames = JSON.parse(await file.text());
-          populatePlatforms();
-          libraryDirty = false;
-          updateSaveEnabled();
-          showBanner("Loaded " + baseGames.length + " games from " + file.name + " · Queue: " + queue.length);
+          applyLoadedLibrary(JSON.parse(await file.text()), file.name);
         } catch (e) {
           showStatus("Could not parse JSON file", "err");
         }
       };
       input.click();
-    };
+    }
+
+    // userInitiated=false on page load: browsers block file pickers without a click
+    async function loadLibrary(userInitiated) {
+      if (userInitiated && libraryDirty &&
+          !confirm("You have unsaved edits to library games. Reloading will discard them.\n\nContinue?")) {
+        return;
+      }
+      try {
+        const res = await fetch("games.json", { cache: "no-cache" });
+        if (res.ok) {
+          applyLoadedLibrary(await res.json(), "JSON");
+          return;
+        }
+      } catch (_) {}
+
+      if (userInitiated) pickLibraryFile();
+      else showBanner("Couldn't load games.json automatically — click Load to choose the file.", "warn");
+    }
+
+    $("loadBtn").onclick = () => loadLibrary(true);
 
     form.onsubmit = (e) => {
       e.preventDefault();
@@ -1106,6 +1236,27 @@
         return;
       }
 
+      const rawScore = parseFloat($("score").value);
+      const rawYear = parseInt($("year").value, 10);
+      const linkVal = $("link").value.trim();
+      if (!isNaN(rawScore) && (rawScore < 0 || rawScore > 100)) {
+        $("score").classList.add("invalid");
+        showStatus("Score must be between 0 and 100", "err");
+        return;
+      }
+      if (!isNaN(rawYear) && (rawYear < YEAR_MIN || rawYear > yearMax())) {
+        $("year").classList.add("invalid");
+        showStatus("Release year must be between " + YEAR_MIN + " and " + yearMax(), "err");
+        return;
+      }
+      if (linkVal && !safeHttpUrl(linkVal)) {
+        $("link").classList.add("invalid");
+        const det = $("link").closest("details");
+        if (det) det.open = true;
+        showStatus("Link must start with http:// or https://", "err");
+        return;
+      }
+
       const platform = normalizePlatform(rawPlatform);
       if (platform !== rawPlatform) $("platform").value = platform;
 
@@ -1120,7 +1271,7 @@
         Score: score,
         "Review Summary": summaryFromScore(score),
         Developer: developer,
-        Link: $("link").value.trim(),
+        Link: linkVal,
         ProductID: $("productId").value.trim(),
         Note: $("note").value.trim()
       };
@@ -1128,18 +1279,14 @@
       // Drop empty Note to keep JSON clean
       if (!game.Note) delete game.Note;
 
-            const skipDupCheck = editingIndex !== null || editingLibraryIndex !== null;
-      if (!skipDupCheck && isDuplicate(game)) {
+      // isDuplicate() already ignores the record currently being edited
+      if (isDuplicate(game)) {
         const ok = confirm("Possible duplicate:\n\"" + game.Name + "\" (" + game.Platform + ")\n\nAdd/update anyway?");
         if (!ok) {
           showStatus("Skipped — possible duplicate", "warn");
           return;
         }
       }
-
-      lastPlatform = platform;
-      lastRegionSelect = regionSelect.value;
-      lastRegionCustom = regionCustom.value;
 
       if (editingLibraryIndex !== null) {
         baseGames[editingLibraryIndex] = game;
@@ -1171,29 +1318,32 @@
         localStorage.setItem("addGame_regionCustom", regCust);
       } catch (_) {}
 
-      form.reset();
-      $("platform").value = plat;
-      $("developer").value = dev;
-      regionSelect.value = regSel;
-      regionCustom.value = regCust;
-      regionCustom.style.display = regSel === "__custom" ? "block" : "none";
-      scorePreview.textContent = "";
-      updateSearchBtns();
-      $("name").focus();
+      resetFormKeepingDefaults();
     };
 
-    function downloadJSON(data, filename) {
-      const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
+      a.href = url;
       a.download = filename;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(a.href);
+      a.remove();
+      // Revoking immediately can cancel the download in some browsers
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function downloadJSON(data, filename) {
+      downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), filename);
     }
 
     downloadBtn.onclick = () => {
       if (baseGames.length === 0 && queue.length === 0) {
         showStatus("Load games.json first (or queue at least one game)", "err");
+        return;
+      }
+      if (baseGames.length === 0 &&
+          !confirm("games.json is not loaded, so the saved file will contain ONLY the " + queue.length + " queued game(s).\n\nReplacing your library file with it would delete everything else. Save anyway?")) {
         return;
       }
       if (queue.length >= 5) {
@@ -1240,12 +1390,7 @@
     $("templateBtn").onclick = () => {
       const headers = "Name,Platform,Region,Release Year,Score,Developer,Link,ProductID,Note\n";
       const example = "Example Game,PlayStation 3,EU,2007,82,Example Studio,https://www.mobygames.com/game/123,BCES-00006,CIB\n";
-      const blob = new Blob([headers + example], { type: "text/csv;charset=utf-8;" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "games-import-template.csv";
-      a.click();
-      URL.revokeObjectURL(a.href);
+      downloadBlob(new Blob(["\uFEFF" + headers + example], { type: "text/csv;charset=utf-8;" }), "games-import-template.csv");
     };
 
     const dropZone = $("dropZone");
@@ -1298,11 +1443,12 @@
     try {
       const rp = localStorage.getItem("addGame_platform");
       const rd = localStorage.getItem("addGame_developer");
-      const rs = localStorage.getItem("addGame_regionSelect");
+      let rs = localStorage.getItem("addGame_regionSelect");
+      if (rs === "NA") rs = "US"; // legacy value
       const rc = localStorage.getItem("addGame_regionCustom");
       if (rp) $("platform").value = rp;
       if (rd) $("developer").value = rd;
-      if (rs) {
+      if (rs && Array.from(regionSelect.options).some(o => o.value === rs)) {
         regionSelect.value = rs;
         if (rs === "__custom") {
           regionCustom.style.display = "block";
@@ -1312,7 +1458,8 @@
       updateSearchBtns();
     } catch (_) {}
 
-    $("loadBtn").click();
+    loadSavedQueue();
+    loadLibrary(false);
   </script>
   <script>
     if ("serviceWorker" in navigator) {

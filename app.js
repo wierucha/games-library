@@ -5,6 +5,7 @@
   let allGames = [];
   let filtered = [];
   let currentPlatform = "All";
+  let platformCounts = {};
 
   const PLATFORM_ORDER = [
     "All",
@@ -45,12 +46,23 @@
     FR: "🇫🇷",
     ES: "🇪🇸",
     IT: "🇮🇹",
+    PL: "🇵🇱",
     KR: "🇰🇷",
     CN: "🇨🇳",
     TW: "🇹🇼",
     BR: "🇧🇷",
     RU: "🇷🇺",
     ASIA: "🌏"
+  };
+
+  // Filter defaults (used for reset + URL hash)
+  const DEFAULTS = {
+    q: "",
+    media: "both",
+    region: "all",
+    rating: "all",
+    year: "all",
+    sort: "name"
   };
 
   // ── DOM ──
@@ -70,15 +82,27 @@
   const $export = document.getElementById("exportBtn");
   const $theme = document.getElementById("themeToggle");
 
+  const reducedMotion =
+    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ── Safe storage (Safari private mode etc. can throw) ──
+  function storageGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+  function storageSet(key, value) {
+    try { localStorage.setItem(key, value); } catch (e) { /* ignore */ }
+  }
+
   // ── Helpers ──
   function ratingClass(summary) {
     if (!summary) return "no-reviews";
     const s = summary.toLowerCase();
+    // Check negative first: "Overwhelmingly Negative" must not match "overwhelmingly"
+    if (s.includes("negative")) return "mostly-negative";
     if (s.includes("overwhelmingly")) return "overwhelming";
     if (s.includes("very positive")) return "very-positive";
     if (s.includes("mostly positive")) return "mostly-positive";
     if (s.includes("mixed")) return "mixed";
-    if (s.includes("negative")) return "mostly-negative";
     return "no-reviews";
   }
 
@@ -94,7 +118,6 @@
   // Physical vs Digital detection
   function isPhysical(game) {
     const p = game.Platform || "";
-    // Explicit physical platforms
     if (p === "PC (Physical)") return true;
     if (p === "PC (Steam)") return false;
     // Everything else (consoles) is treated as physical
@@ -104,7 +127,7 @@
   function regionDisplay(region) {
     if (!region || region === "WW") return "";
     const flag = REGION_FLAGS[region] || "🏳️";
-    return `<span class="region"><span class="region-flag">${flag}</span> ${region}</span>`;
+    return `<span class="region"><span class="region-flag">${flag}</span> ${escapeHtml(region)}</span>`;
   }
 
   function escapeHtml(str) {
@@ -113,13 +136,30 @@
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  // Only allow http(s) links
+  function safeUrl(url) {
+    if (!url) return "";
+    try {
+      const u = new URL(url, location.href);
+      return u.protocol === "http:" || u.protocol === "https:" ? u.href : "";
+    } catch (e) {
+      return "";
+    }
   }
 
   // ── Platform tabs ──
   function buildPlatformTabs() {
-    const platformsInData = [...new Set(allGames.map((g) => g.Platform || "Unknown"))];
+    platformCounts = {};
+    allGames.forEach((g) => {
+      const p = g.Platform || "Unknown";
+      platformCounts[p] = (platformCounts[p] || 0) + 1;
+    });
 
+    const platformsInData = Object.keys(platformCounts);
     const ordered = PLATFORM_ORDER.filter((p) => p === "All" || platformsInData.includes(p));
     const extras = platformsInData
       .filter((p) => !PLATFORM_ORDER.includes(p))
@@ -130,26 +170,48 @@
     $tabs.innerHTML = "";
     tabs.forEach((platform) => {
       const btn = document.createElement("button");
-      btn.className = "platform-tab" + (platform === currentPlatform ? " active" : "");
-      btn.textContent = platform;
+      btn.type = "button";
+      btn.className = "platform-tab";
       btn.dataset.platform = platform;
+
+      btn.textContent = platform;
+
       btn.addEventListener("click", () => {
         currentPlatform = platform;
-        document.querySelectorAll(".platform-tab").forEach((t) => t.classList.remove("active"));
-        btn.classList.add("active");
+        syncTabs();
         applyFilters();
       });
       $tabs.appendChild(btn);
     });
 
-    // Allow mouse wheel to scroll tabs horizontally on desktop
-    $tabs.addEventListener("wheel", (e) => {
-      if (e.deltaY !== 0) {
-        e.preventDefault();
-        $tabs.scrollLeft += e.deltaY;
-      }
-    }, { passive: false });
+    syncTabs();
   }
+
+  function syncTabs() {
+    document.querySelectorAll(".platform-tab").forEach((t) => {
+      const active = t.dataset.platform === currentPlatform;
+      t.classList.toggle("active", active);
+      t.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  // Mouse wheel scrolls tabs horizontally on desktop – but only when it
+  // is a pure vertical wheel, the strip overflows, and it isn't at an edge
+  // (so the page can still scroll normally).
+  $tabs.addEventListener(
+    "wheel",
+    (e) => {
+      if (e.deltaX !== 0 || e.deltaY === 0) return;
+      if ($tabs.scrollWidth <= $tabs.clientWidth) return;
+      const atStart = $tabs.scrollLeft <= 0 && e.deltaY < 0;
+      const atEnd =
+        $tabs.scrollLeft + $tabs.clientWidth >= $tabs.scrollWidth - 1 && e.deltaY > 0;
+      if (atStart || atEnd) return;
+      e.preventDefault();
+      $tabs.scrollLeft += e.deltaY;
+    },
+    { passive: false }
+  );
 
   // ── Render cards ──
   function render() {
@@ -166,18 +228,19 @@
     const frag = document.createDocumentFragment();
 
     filtered.forEach((g) => {
-      const a = document.createElement("a");
-      a.className = "game-card";
+      const href = safeUrl(g.Link);
+      let card;
 
-      if (g.Link) {
-        a.href = g.Link;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
+      if (href) {
+        card = document.createElement("a");
+        card.href = href;
+        card.target = "_blank";
+        card.rel = "noopener noreferrer";
       } else {
-        a.href = "#";
-        a.addEventListener("click", (e) => e.preventDefault());
-        a.style.cursor = "default";
+        card = document.createElement("div");
+        card.classList.add("no-link");
       }
+      card.classList.add("game-card");
 
       const badgeClass = ratingClass(g["Review Summary"]);
       const regionHtml = regionDisplay(g.Region);
@@ -189,7 +252,7 @@
         ? `<div class="game-note">${escapeHtml(g.Note)}</div>`
         : "";
 
-      a.innerHTML = `
+      card.innerHTML = `
         <div class="card-header">
           <div class="game-name">${escapeHtml(g.Name)}${regionHtml}</div>
           <span class="rating-badge ${badgeClass}">${escapeHtml(g["Review Summary"] || "No reviews")}</span>
@@ -203,7 +266,7 @@
         ${noteHtml}
       `;
 
-      frag.appendChild(a);
+      frag.appendChild(card);
     });
 
     $list.innerHTML = "";
@@ -216,13 +279,33 @@
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "") // strip diacritics
-      .replace(/[^a-z0-9\s]/g, " ")   // punctuation → space
+      .replace(/ł/g, "l")              // ł has no combining decomposition
+      .replace(/[^a-z0-9\s]/g, " ")    // punctuation → space
       .replace(/\s+/g, " ")
       .trim();
   }
 
+  // Sort helper: missing values (0 / undefined) always go last
+  function byNumber(key, dir) {
+    return (a, b) => {
+      const av = a[key] > 0 ? a[key] : null;
+      const bv = b[key] > 0 ? b[key] : null;
+      if (av === null && bv === null) return 0;
+      if (av === null) return 1;
+      if (bv === null) return -1;
+      return dir === "desc" ? bv - av : av - bv;
+    };
+  }
+
+  function byName(dir) {
+    return (a, b) => {
+      const r = (a.Name || "").localeCompare(b.Name || "");
+      return dir === "desc" ? -r : r;
+    };
+  }
+
   function applyFilters() {
-    const q = $search.value.trim().toLowerCase();
+    const nq = normalizeSearch($search.value);
     const media = $media.value;
     const region = $region.value;
     const rating = $rating.value;
@@ -243,8 +326,7 @@
         if ((g.Region || "WW") !== region) return false;
       }
 
-      if (q) {
-        const nq = normalizeSearch(q);
+      if (nq) {
         const name = normalizeSearch(g.Name);
         const dev = normalizeSearch(g.Developer);
         const note = normalizeSearch(g.Note);
@@ -262,26 +344,72 @@
       return true;
     });
 
-    filtered.sort((a, b) => {
-      switch (sort) {
-        case "name":
-          return (a.Name || "").localeCompare(b.Name || "");
-        case "name-desc":
-          return (b.Name || "").localeCompare(a.Name || "");
-        case "year-desc":
-          return (b["Release Year"] || 0) - (a["Release Year"] || 0);
-        case "year":
-          return (a["Release Year"] || 0) - (b["Release Year"] || 0);
-        case "score-desc":
-          return (b.Score || 0) - (a.Score || 0);
-        case "score":
-          return (a.Score || 0) - (b.Score || 0);
-        default:
-          return 0;
-      }
-    });
+    const primary = {
+      name: byName("asc"),
+      "name-desc": byName("desc"),
+      "year-desc": byNumber("Release Year", "desc"),
+      year: byNumber("Release Year", "asc"),
+      "score-desc": byNumber("Score", "desc"),
+      score: byNumber("Score", "asc")
+    }[sort];
+
+    const tieBreak = byName("asc");
+    filtered.sort((a, b) => (primary ? primary(a, b) : 0) || tieBreak(a, b));
 
     render();
+    saveStateToHash();
+  }
+
+  // ── URL hash state (shareable / survives refresh) ──
+  function currentState() {
+    return {
+      p: currentPlatform,
+      q: $search.value.trim(),
+      media: $media.value,
+      region: $region.value,
+      rating: $rating.value,
+      year: $year.value,
+      sort: $sort.value
+    };
+  }
+
+  function saveStateToHash() {
+    const st = currentState();
+    const params = new URLSearchParams();
+    if (st.p !== "All") params.set("p", st.p);
+    Object.keys(DEFAULTS).forEach((k) => {
+      if (st[k] !== DEFAULTS[k]) params.set(k, st[k]);
+    });
+    const hash = params.toString();
+    const url = location.pathname + location.search + (hash ? "#" + hash : "");
+    try {
+      history.replaceState(null, "", url);
+    } catch (e) { /* ignore */ }
+  }
+
+  function setSelectIfValid($el, value) {
+    if (value == null) return;
+    const ok = Array.from($el.options).some((o) => o.value === value);
+    if (ok) $el.value = value;
+  }
+
+  function loadStateFromHash() {
+    const params = new URLSearchParams(location.hash.replace(/^#/, ""));
+
+    const p = params.get("p");
+    if (p && platformCounts[p]) currentPlatform = p;
+
+    const q = params.get("q");
+    if (q) {
+      $search.value = q;
+      $clear.classList.add("visible");
+    }
+
+    setSelectIfValid($media, params.get("media"));
+    setSelectIfValid($region, params.get("region"));
+    setSelectIfValid($rating, params.get("rating"));
+    setSelectIfValid($year, params.get("year"));
+    setSelectIfValid($sort, params.get("sort"));
   }
 
   // ── Populate year filter ──
@@ -316,6 +444,15 @@
   }
 
   // ── Export current view as CSV ──
+  function csvCell(val) {
+    let v = String(val ?? "");
+    // Neutralise spreadsheet formula injection
+    if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;
+    v = v.replace(/"/g, '""');
+    if (/[",\r\n]/.test(v)) v = `"${v}"`;
+    return v;
+  }
+
   function exportCSV() {
     if (!filtered.length) {
       alert("Nothing to export");
@@ -323,28 +460,23 @@
     }
 
     const headers = ["Name", "Platform", "Region", "Release Year", "Score", "Review Summary", "Developer", "Link", "ProductID", "Note"];
-    const rows = filtered.map((g) =>
-      headers.map((h) => {
-        let val = g[h] ?? "";
-        // Escape quotes and wrap if needed
-        val = String(val).replace(/"/g, '""');
-        if (val.includes(",") || val.includes('"') || val.includes("\n")) {
-          val = `"${val}"`;
-        }
-        return val;
-      }).join(",")
-    );
+    const rows = filtered.map((g) => headers.map((h) => csvCell(g[h])).join(","));
 
-    const csv = [headers.join(","), ...rows].join("\n");
+    // BOM so Excel reads UTF-8 (Polish characters etc.) correctly
+    const csv = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
-    const platformSlug = currentPlatform === "All" ? "all" : currentPlatform.toLowerCase().replace(/\s+/g, "-");
+    const platformSlug = currentPlatform === "All"
+      ? "all"
+      : currentPlatform.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     a.href = url;
     a.download = `games-library-${platformSlug}.csv`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   // ── Events ──
@@ -369,17 +501,15 @@
   $sort.addEventListener("change", applyFilters);
 
   $reset.addEventListener("click", () => {
-    $search.value = "";
+    $search.value = DEFAULTS.q;
     $clear.classList.remove("visible");
-    $media.value = "both";
-    $region.value = "all";
-    $rating.value = "all";
-    $year.value = "all";
-    $sort.value = "name";
+    $media.value = DEFAULTS.media;
+    $region.value = DEFAULTS.region;
+    $rating.value = DEFAULTS.rating;
+    $year.value = DEFAULTS.year;
+    $sort.value = DEFAULTS.sort;
     currentPlatform = "All";
-    document.querySelectorAll(".platform-tab").forEach((t) => {
-      t.classList.toggle("active", t.dataset.platform === "All");
-    });
+    syncTabs();
     applyFilters();
   });
 
@@ -402,54 +532,107 @@
       $scrollTop.hidden = window.scrollY < 400;
     }, { passive: true });
     $scrollTop.addEventListener("click", () => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
     });
   }
 
-
   // ── Theme ──
-  function applyTheme(theme) {
+  // `persist` is false when the theme comes from the OS preference, so the
+  // app keeps following the system until the user toggles it manually.
+  function applyTheme(theme, persist) {
     document.documentElement.setAttribute("data-theme", theme);
     // Icon shows the theme you will switch to
     $theme.textContent = theme === "light" ? "☾" : "☀";
     $theme.title = theme === "light" ? "Switch to dark theme" : "Switch to light theme";
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = theme === "light" ? "#f4f5f7" : "#0f0f13";
-    localStorage.setItem("theme", theme);
+    if (persist) storageSet("theme", theme);
+  }
+
+  function systemTheme() {
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
   }
 
   function initTheme() {
-    const saved = localStorage.getItem("theme");
-    applyTheme(saved || "light");
+    const saved = storageGet("theme");
+    if (saved === "dark" || saved === "light") applyTheme(saved, false);
+    else applyTheme(systemTheme(), false);
   }
 
   $theme.addEventListener("click", () => {
     const current = document.documentElement.getAttribute("data-theme") || "light";
-    applyTheme(current === "dark" ? "light" : "dark");
+    applyTheme(current === "dark" ? "light" : "dark", true);
   });
+
+  // Follow OS changes while the user hasn't chosen a theme explicitly
+  if (window.matchMedia) {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => {
+      const saved = storageGet("theme");
+      if (saved !== "dark" && saved !== "light") applyTheme(systemTheme(), false);
+    };
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+  }
+
+  // ── Error state with retry ──
+  function showError(err) {
+    $empty.hidden = true;
+    $count.textContent = "Error loading data";
+    $list.innerHTML = "";
+
+    const box = document.createElement("div");
+    box.className = "error-state";
+    box.setAttribute("role", "alert");
+
+    const p = document.createElement("p");
+    p.textContent = "Could not load games.json";
+    const detail = document.createElement("p");
+    detail.className = "error-detail";
+    detail.textContent = "Make sure it is in the same folder as index.html.";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn";
+    btn.textContent = "Retry";
+    btn.addEventListener("click", init);
+
+    box.append(p, detail, btn);
+    $list.appendChild(box);
+    console.error(err);
+  }
 
   // ── Init ──
   async function init() {
-    initTheme();
+    $count.textContent = "Loading…";
     $list.innerHTML = Array(6).fill('<div class="skeleton"></div>').join("");
 
     try {
       const res = await fetch("games.json");
-      if (!res.ok) throw new Error("Failed to load games.json");
-      allGames = await res.json();
+      if (!res.ok) throw new Error("Failed to load games.json (" + res.status + ")");
+      const data = await res.json();
+      if (!Array.isArray(data)) throw new Error("games.json is not an array");
+      allGames = data;
 
       $stats.textContent = `${allGames.length} games`;
       buildPlatformTabs();
       populateYears();
       populateRegions();
+      loadStateFromHash();
+      syncTabs();
       applyFilters();
+
+      // Bring the active tab into view (e.g. restored from URL)
+      const active = $tabs.querySelector(".platform-tab.active");
+      if (active && currentPlatform !== "All" && active.scrollIntoView) {
+        active.scrollIntoView({ block: "nearest", inline: "center" });
+      }
     } catch (err) {
-      $list.innerHTML = "";
-      $count.textContent = "Error loading data";
-      console.error(err);
-      alert("Could not load games.json. Make sure it is in the same folder as index.html");
+      showError(err);
     }
   }
 
+  initTheme();
   init();
 })();
