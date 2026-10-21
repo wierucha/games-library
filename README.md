@@ -16,17 +16,19 @@ Made primarily for phone use.
 - Filters: physical / digital, region, rating, year
 - Sort by name, year, or score
 - Light & dark theme
+- Filters and search are kept in the URL, so views survive a refresh and can be shared
 - Export the current view as CSV
 - Jump-to-top on long lists
-- Works offline (service worker)
+- Works offline and can be added to the home screen
 
 **Manage** ([add-game.html](add-game.html))
 - Add games with a simple form
 - Edit existing library entries
 - Bulk import from CSV or Excel
-- Queue, undo, clear
+- Queue, undo, clear — the queue survives a refresh
 - Auto backup before save
 - Platform name normalization (`PS3` → `PlayStation 3`)
+- Input validation and duplicate detection
 - Quick links to MobyGames and Metacritic
 
 ---
@@ -51,7 +53,8 @@ Open **add-game.html** to add or edit games. Use **Save** to download an updated
 | `games.json` | Your data |
 | `add-game.html` | Add / edit / import |
 | `sw.js` | Offline cache |
-| `favicon.svg` | Tab icon |
+| `manifest.webmanifest` | Home-screen install info |
+| `favicon.svg`, `*.png` | Icons |
 
 ---
 
