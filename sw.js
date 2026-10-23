@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION whenever you change any cached asset's name or the strategy below.
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const CACHE = `games-library-${CACHE_VERSION}`;
 const FONT_CACHE = "games-library-fonts-v1";
 
@@ -100,6 +100,9 @@ self.addEventListener("fetch", (event) => {
 
   // Leave everything else cross-origin (e.g. link previews) to the browser
   if (url.origin !== self.location.origin) return;
+
+  // Live-save endpoint and its folders must always hit the network
+  if (/\/(save|hash-password)\.php$/.test(url.pathname)) return;
 
   event.respondWith(networkFirst(req));
 });

@@ -27,6 +27,7 @@ Made primarily for phone use.
 - Bulk import from CSV or Excel
 - Queue, undo, clear — the queue survives a refresh
 - Auto backup before save
+- Optional live saving on PHP hosting: log in, hit Save, and the site updates — no download or upload
 - Platform name normalization (`PS3` → `PlayStation 3`)
 - Input validation and duplicate detection
 - Quick links to MobyGames and Metacritic
@@ -43,6 +44,16 @@ Open **add-game.html** to add or edit games. Use **Save** to download an updated
 
 ---
 
+## Live saving (optional, PHP hosting)
+
+1. Open `hash-password.php` in your browser (over https), choose a username and password
+2. Paste the result into `config.php`, upload it, then delete `hash-password.php`
+3. Open **add-game.html**, log in, and **Save** writes straight to `games.json`
+
+Without PHP the page falls back to downloading `games.json`. The last 10 saves are kept in `backups/`.
+
+---
+
 ## Files
 
 | File | Role |
@@ -53,6 +64,7 @@ Open **add-game.html** to add or edit games. Use **Save** to download an updated
 | `games.json` | Your data |
 | `add-game.html` | Add / edit / import |
 | `sw.js` | Offline cache |
+| `save.php`, `config.php` | Live saving (optional) |
 | `manifest.webmanifest` | Home-screen install info |
 | `favicon.svg`, `*.png` | Icons |
 

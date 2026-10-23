@@ -363,6 +363,21 @@
     [data-theme="light"] .toast.err { background: #fdecea; color: #a12828; }
     [data-theme="light"] .toast.info { background: #e8f2fb; color: #155a8a; }
     [data-theme="light"] .toast.warn { background: #fff6e0; color: #8a6a00; }
+    .auth-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .auth-title { margin-bottom: 8px; }
+    .auth-row { display: flex; gap: 8px; }
+    .auth-row input { flex: 1; min-width: 0; margin: 0; }
+    .auth-btn { width: 100%; margin-top: 8px; }
+    .auth-in { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .auth-in strong { color: var(--text); }
     [hidden] { display: none !important; }
     :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: 0; }
@@ -377,9 +392,24 @@
     <div>
       <a href="index.html" class="back-link">← Library</a>
       <h1>Add Game</h1>
-      <p class="sub">Queue games, then download updated games.json</p>
+      <p class="sub" id="subText">Queue games, then download updated games.json</p>
     </div>
     <button type="button" id="themeToggle" class="theme-btn" aria-label="Toggle theme" title="Toggle theme">☾</button>
+  </div>
+
+  <div class="auth-box" id="authBox" hidden>
+    <form id="loginForm" class="auth-login" autocomplete="on">
+      <div class="auth-title">Log in to save straight to the site</div>
+      <div class="auth-row">
+        <input id="authUser" name="username" placeholder="Username" autocomplete="username" autocapitalize="none" spellcheck="false" />
+        <input id="authPass" name="password" type="password" placeholder="Password" autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn-secondary auth-btn">Log in</button>
+    </form>
+    <div class="auth-in" id="loggedInRow" hidden>
+      <span>Logged in as <strong id="authName"></strong> · saving goes straight to the site</span>
+      <button type="button" class="btn-ghost" id="logoutBtn">Log out</button>
+    </div>
   </div>
 
   <form id="form" novalidate>
@@ -495,6 +525,10 @@
     let editingLibraryIndex = null; // index in baseGames when editing library record
     let undoStack = []; // snapshots of queue for undo
     let libraryDirty = false;
+    let serverMode = false;   // save.php available and configured
+    let loggedIn = false;
+    let csrfToken = "";
+    let libraryVersion = ""; // version of games.json the editor was loaded from
 
     const $ = (id) => document.getElementById(id);
     const form = $("form");
@@ -1181,6 +1215,7 @@
       populatePlatforms();
       libraryDirty = false;
       updateSaveEnabled();
+      if (serverMode) refreshVersion();
       showBanner("Loaded " + baseGames.length + " games from " + label + " · Queue: " + queue.length);
     }
 
@@ -1337,7 +1372,7 @@
       downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), filename);
     }
 
-    downloadBtn.onclick = () => {
+    function downloadSave() {
       if (baseGames.length === 0 && queue.length === 0) {
         showStatus("Load games.json first (or queue at least one game)", "err");
         return;
@@ -1369,7 +1404,161 @@
         showStatus("Backup saved + downloaded games.json (" + combined.length + " games)");
         updateSaveEnabled();
       }, 400);
+    }
+
+    // ── Live saving through save.php (falls back to download when it is not there) ──
+    const SAVE_URL = "save.php";
+    const authBox = $("authBox");
+    const loginForm = $("loginForm");
+    const authUser = $("authUser");
+    const authPass = $("authPass");
+    const loggedInRow = $("loggedInRow");
+    const authName = $("authName");
+    const subText = $("subText");
+
+    async function api(action, body) {
+      const opts = { method: body === undefined ? "GET" : "POST", cache: "no-store", credentials: "same-origin", headers: {} };
+      if (body !== undefined) {
+        opts.headers["Content-Type"] = "application/json";
+        opts.headers["X-CSRF-Token"] = csrfToken;
+        opts.body = JSON.stringify(body);
+      }
+      const res = await fetch(SAVE_URL + "?action=" + action, opts);
+      let data = null;
+      try { data = await res.json(); } catch (_) {}
+      return { status: res.status, data };
+    }
+
+    function updateAuthUI() {
+      authBox.hidden = !serverMode;
+      loginForm.hidden = loggedIn;
+      loggedInRow.hidden = !loggedIn;
+      subText.textContent = serverMode
+        ? "Queue games, then save them straight to the site"
+        : "Queue games, then download updated games.json";
+    }
+
+    function dropSession(msg) {
+      loggedIn = false;
+      csrfToken = "";
+      updateAuthUI();
+      if (msg) showStatus(msg, "warn");
+    }
+
+    async function initServer() {
+      try {
+        const r = await api("status");
+        const d = r.data;
+        if (r.status === 200 && d && d.ok && d.server === "games-library" && d.configured) {
+          serverMode = true;
+          loggedIn = !!d.loggedIn;
+          csrfToken = d.csrf || "";
+          libraryVersion = d.version || "";
+          if (loggedIn) authName.textContent = d.user;
+        }
+      } catch (_) { /* no save.php: stay in download mode */ }
+      updateAuthUI();
+    }
+
+    async function refreshVersion() {
+      try {
+        const r = await api("status");
+        if (r.data && r.data.ok) {
+          libraryVersion = r.data.version || "";
+          if (loggedIn && !r.data.loggedIn) dropSession("Session expired. Log in again (your queue is kept)");
+        }
+      } catch (_) {}
+    }
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const u = authUser.value.trim();
+      const pw = authPass.value;
+      if (!u || !pw) { showStatus("Enter username and password", "err"); return; }
+      const btn = loginForm.querySelector("button");
+      btn.disabled = true;
+      try {
+        const r = await api("login", { username: u, password: pw });
+        if (r.status === 200 && r.data && r.data.ok) {
+          loggedIn = true;
+          csrfToken = r.data.csrf || "";
+          authName.textContent = r.data.user;
+          authPass.value = "";
+          updateAuthUI();
+          showStatus("Logged in");
+        } else {
+          showStatus((r.data && r.data.error) || "Login failed", "err");
+        }
+      } catch (_) {
+        showStatus("Could not reach the server", "err");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    $("logoutBtn").onclick = async () => {
+      try { await api("logout", {}); } catch (_) {}
+      dropSession("");
+      showStatus("Logged out", "info");
     };
+
+    async function saveToServer() {
+      if (!loggedIn) {
+        showStatus("Log in first to save to the site", "warn");
+        authUser.focus();
+        return;
+      }
+      if (baseGames.length === 0) {
+        showStatus("Load the library first (Load button), so nothing gets overwritten", "err");
+        return;
+      }
+      if (queue.length >= 5 &&
+          !confirm("You are about to merge " + queue.length + " queued games into the library (" + baseGames.length + " existing).\n\nContinue?")) {
+        return;
+      }
+
+      const combined = [...baseGames, ...queue];
+      const label = downloadBtn.textContent;
+      downloadBtn.disabled = true;
+      downloadBtn.textContent = "Saving…";
+      try {
+        const r = await api("save", { games: combined, version: libraryVersion });
+        const d = r.data;
+        if (r.status === 200 && d && d.ok) {
+          let fresh = null;
+          try {
+            const rr = await fetch("games.json", { cache: "no-store" });
+            if (rr.ok) fresh = await rr.json();
+          } catch (_) {}
+          baseGames = Array.isArray(fresh) && fresh.length === d.count ? fresh : combined;
+          libraryVersion = d.version || "";
+          queue = [];
+          undoStack = [];
+          const ub = $("undoBtn");
+          if (ub) ub.disabled = true;
+          libraryDirty = false;
+          cancelEdit();
+          populatePlatforms();
+          renderQueue();
+          showStatus("Saved to the site (" + d.count + " games)");
+        } else if (r.status === 401) {
+          dropSession("Session expired. Log in again (your queue is kept)");
+        } else if (r.status === 403) {
+          dropSession((d && d.error) || "Security token rejected. Log in again");
+        } else if (r.status === 409) {
+          showStatus((d && d.error) || "The library changed on the server. Load it again, then save", "err");
+        } else {
+          showStatus((d && d.error) || "Save failed (" + r.status + ")", "err");
+        }
+      } catch (_) {
+        showStatus("Could not reach the server. Nothing was saved", "err");
+      } finally {
+        downloadBtn.textContent = label;
+        updateSaveEnabled();
+      }
+    }
+
+    downloadBtn.onclick = () => (serverMode ? saveToServer() : downloadSave());
 
     const undoBtnEl = $("undoBtn");
     if (undoBtnEl) undoBtnEl.onclick = undoLast;
@@ -1459,7 +1648,7 @@
     } catch (_) {}
 
     loadSavedQueue();
-    loadLibrary(false);
+    initServer().then(() => loadLibrary(false));
   </script>
   <script>
     if ("serviceWorker" in navigator) {
