@@ -1,3 +1,12 @@
+/* Self-hosted Inter (put InterVariable.woff2 in the fonts/ folder; system fonts are used until then) */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: local('Inter Variable'), local('Inter'), url('fonts/InterVariable.woff2') format('woff2');
+}
+
 :root,
 [data-theme="light"] {
   --bg: #f4f5f7;
@@ -407,6 +416,22 @@ body {
   margin-left: 6px;
   vertical-align: middle;
   white-space: nowrap;
+}
+
+.format {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: rgba(154, 154, 171, 0.12);
+  padding: 3px 6px;
+  border-radius: 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.format svg {
+  display: block;
 }
 
 .region-flag {

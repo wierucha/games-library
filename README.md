@@ -13,6 +13,7 @@ Made primarily for phone use.
 **Browse**
 - Platform tabs (PlayStation, Nintendo, Xbox, PC physical / Steam, older systems…)
 - Search by name, developer, or notes
+- Disc / download icon on every console game (PC has separate physical and Steam tabs)
 - Filters: physical / digital, region, rating, year
 - Sort by name, year, or score
 - Light & dark theme
@@ -23,7 +24,7 @@ Made primarily for phone use.
 
 **Manage** ([add-game.html](add-game.html))
 - Add games with a simple form
-- Edit existing library entries
+- Edit or delete existing library entries
 - Bulk import from CSV or Excel
 - Queue, undo, clear — the queue survives a refresh
 - Auto backup before save
@@ -67,6 +68,7 @@ Without PHP the page falls back to downloading `games.json`. The last 10 saves a
 | `save.php`, `config.php` | Live saving (optional) |
 | `manifest.webmanifest` | Home-screen install info |
 | `favicon.svg`, `*.png` | Icons |
+| `fonts/InterVariable.woff2` | Inter font — download from [rsms.me/inter](https://rsms.me/inter/) |
 
 ---
 

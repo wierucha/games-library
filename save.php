@@ -319,6 +319,16 @@ function normalize_game($g, $i, array &$errors)
         return null;
     }
 
+    // Physical / Digital (older clients may not send it: Steam = Digital, everything else = Physical)
+    $format = ucfirst(strtolower(clean_str(isset($g['Format']) ? $g['Format'] : '', 10)));
+    if ($format === '') {
+        $format = ($platform === 'PC (Steam)') ? 'Digital' : 'Physical';
+    }
+    if ($format !== 'Physical' && $format !== 'Digital') {
+        $errors[] = "\"$name\": Format must be Physical or Digital";
+        return null;
+    }
+
     $region = strtoupper(clean_str(isset($g['Region']) ? $g['Region'] : 'WW', 10));
     if ($region === '') {
         $region = 'WW';
@@ -369,6 +379,7 @@ function normalize_game($g, $i, array &$errors)
     $out = array(
         'Name'           => $name,
         'Platform'       => $platform,
+        'Format'         => $format,
         'Region'         => $region,
         'Release Year'   => $year,
         'Score'          => $score,

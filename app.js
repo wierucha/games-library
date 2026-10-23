@@ -115,8 +115,10 @@
     return Number.isInteger(score) ? score : score.toFixed(1);
   }
 
-  // Physical vs Digital detection
+  // Physical vs Digital: uses the Format field, falls back to the platform for old data
   function isPhysical(game) {
+    if (game.Format === "Physical") return true;
+    if (game.Format === "Digital") return false;
     const p = game.Platform || "";
     if (p === "PC (Physical)") return true;
     if (p === "PC (Steam)") return false;
@@ -128,6 +130,18 @@
     if (!region || region === "WW") return "";
     const flag = REGION_FLAGS[region] || "🏳️";
     return `<span class="region"><span class="region-flag">${flag}</span> ${escapeHtml(region)}</span>`;
+  }
+
+  // Small disc / download icon (consoles only — the PC tabs already split physical and digital)
+  const ICON_PHYSICAL = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>';
+  const ICON_DIGITAL = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10"/><path d="m8 11 4 4 4-4"/><path d="M5 19h14"/></svg>';
+
+  function formatDisplay(game) {
+    const p = game.Platform || "";
+    if (p === "PC (Steam)" || p === "PC (Physical)") return "";
+    const physical = isPhysical(game);
+    const label = physical ? "Physical" : "Digital";
+    return `<span class="format" title="${label}" aria-label="${label}">${physical ? ICON_PHYSICAL : ICON_DIGITAL}</span>`;
   }
 
   function escapeHtml(str) {
@@ -243,7 +257,7 @@
       card.classList.add("game-card");
 
       const badgeClass = ratingClass(g["Review Summary"]);
-      const regionHtml = regionDisplay(g.Region);
+      const regionHtml = regionDisplay(g.Region) + formatDisplay(g);
       const platformLabel = g.Platform
         ? `<span class="meta-item">${escapeHtml(g.Platform)}</span>`
         : "";
@@ -459,7 +473,7 @@
       return;
     }
 
-    const headers = ["Name", "Platform", "Region", "Release Year", "Score", "Review Summary", "Developer", "Link", "ProductID", "Note"];
+    const headers = ["Name", "Platform", "Format", "Region", "Release Year", "Score", "Review Summary", "Developer", "Link", "ProductID", "Note"];
     const rows = filtered.map((g) => headers.map((h) => csvCell(g[h])).join(","));
 
     // BOM so Excel reads UTF-8 (Polish characters etc.) correctly

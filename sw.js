@@ -1,7 +1,6 @@
 // Bump CACHE_VERSION whenever you change any cached asset's name or the strategy below.
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const CACHE = `games-library-${CACHE_VERSION}`;
-const FONT_CACHE = "games-library-fonts-v1";
 
 const ASSETS = [
   "./",
@@ -14,10 +13,9 @@ const ASSETS = [
   "./favicon.svg",
   "./apple-touch-icon.png",
   "./icon-192.png",
-  "./icon-512.png"
+  "./icon-512.png",
+  "./fonts/InterVariable.woff2"
 ];
-
-const FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -38,7 +36,7 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((k) => k !== CACHE && k !== FONT_CACHE)
+            .filter((k) => k !== CACHE)
             .map((k) => caches.delete(k))
         )
       )
@@ -71,20 +69,18 @@ async function networkFirst(req) {
   }
 }
 
-// Stale-while-revalidate for Google Fonts, so the UI keeps its font offline.
-async function fontStrategy(req) {
-  const cache = await caches.open(FONT_CACHE);
-  const cached = await cache.match(req);
-  const network = fetch(req)
-    .then((res) => {
-      if (res && (res.ok || res.type === "opaque")) cache.put(req, res.clone());
-      return res;
-    })
-    .catch(() => null);
-
+// Cache-first for the self-hosted font: it never changes, so skip the network when cached.
+async function cacheFirst(req) {
+  const cache = await caches.open(CACHE);
+  const cached = await cache.match(req, { ignoreSearch: true });
   if (cached) return cached;
-  const res = await network;
-  return res || new Response("", { status: 504 });
+  try {
+    const res = await fetch(req);
+    if (res && res.ok && res.type === "basic") cache.put(req, res.clone());
+    return res;
+  } catch (err) {
+    return new Response("", { status: 504 });
+  }
 }
 
 self.addEventListener("fetch", (event) => {
@@ -93,16 +89,16 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(req.url);
 
-  if (FONT_HOSTS.includes(url.hostname)) {
-    event.respondWith(fontStrategy(req));
-    return;
-  }
-
   // Leave everything else cross-origin (e.g. link previews) to the browser
   if (url.origin !== self.location.origin) return;
 
   // Live-save endpoint and its folders must always hit the network
   if (/\/(save|hash-password)\.php$/.test(url.pathname)) return;
+
+  if (/\/fonts\/[^/]+\.woff2$/.test(url.pathname)) {
+    event.respondWith(cacheFirst(req));
+    return;
+  }
 
   event.respondWith(networkFirst(req));
 });
